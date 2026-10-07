@@ -30,7 +30,7 @@ record must retain its selection reasons and source provenance.
 The processing order is:
 
 ```text
-fetch -> normalize -> validate/deduplicate -> inspect -> bundle -> dev import -> promote same bundle
+fetch -> normalize -> validate/deduplicate -> inspect -> review duplicates -> curate -> dev import -> promote same bundle
 ```
 
 The command-line interface fetches only explicitly configured source files,
@@ -72,6 +72,28 @@ Get-Content data/work/first-pass/rejections.jsonl
 npm run geo -- validate data/work/first-pass/catalogue.jsonl
 npm run geo -- inspect data/work/first-pass/catalogue.jsonl geonames-cities5000:3169070
 ```
+
+### Resolve duplicate-review clusters before import
+
+`process` deliberately produces a **first-pass** bundle. It is not importable
+when `summary.duplicateClusters` is non-zero. Generate a review file, inspect
+every cluster, and explicitly choose the canonical record for each actual
+match. Do not use an automatic bulk merge: nearby places with the same name
+are often distinct historical places.
+
+```powershell
+npm run geo -- review:init data/work/first-pass --out data/work/first-pass-review.json
+# Edit data/work/first-pass-review.json. For every decision set action to MERGE
+# and set canonicalStableId to one ID listed in that cluster.
+npm run geo -- curate data/work/first-pass --decisions data/work/first-pass-review.json --out data/work/reviewed-v1
+npm run geo -- validate data/work/reviewed-v1/catalogue.jsonl
+```
+
+`KEEP_SEPARATE` is deliberately not importable. It documents that the reviewer
+does not want to merge a cluster, but it keeps the bundle blocked until the
+records are re-modelled or excluded in a future, separately reviewed release.
+The curated manifest stores hashes of both the original bundle and review file;
+changing the source bundle requires a fresh review file.
 
 `config/sources.json` is the pinned source registry. The current first pass
 uses GeoNames `cities5000` for significant modern settlements/admin centres
