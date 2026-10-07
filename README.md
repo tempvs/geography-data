@@ -11,9 +11,12 @@ bundles without deploying a Lambda.
 - Small curated JSON/JSONL samples and release manifests.
 - Checksums, licences, provenance, and reproducible source configuration.
 
-Raw global downloads and large regenerated bundles do **not** belong in normal
-Git history. Publish them as immutable S3 artifacts named by a checked-in
-manifest. A future `dataset:publish` command will support an optional GitHub
+Raw global downloads do **not** belong in normal Git history. Small curated
+catalogue releases are committed as 10–25 MB compressed JSONL chunks alongside
+their manifest and Git tag. Introduce immutable S3 artifacts only when a
+release exceeds the repository policy, needs durable AWS-side dev→production
+promotion, or needs lifecycle/backup controls. A future `dataset:publish`
+command will choose the appropriate target and may support an optional GitHub
 Release or Git LFS mirror after quota/cost review.
 
 ## Data scope
@@ -52,3 +55,31 @@ can be identified by line number.
 Every record requires a stable external/Tempvs ID, name, WGS84 point, feature
 type, at least one transparent selection reason, and at least one source with
 licence/provenance.
+
+## Release layout
+
+Canonical places are **not** split primarily by historical period: one place
+may be relevant in several periods. A published release uses separately
+chunked, deterministic stable-ID-hash partitions:
+
+```text
+releases/vX.Y.Z/
+  manifest.json
+  summary.json
+  places/part-*.jsonl.gz
+  names/part-*.jsonl.gz
+  parents/part-*.jsonl.gz
+  period-relevance/part-*.jsonl.gz
+  provenance/part-*.jsonl.gz
+```
+
+Country and period summaries are generated views for review; they do not
+duplicate canonical records. The first curated 150k–300k catalogue is expected
+to occupy roughly 75–350 MB compressed, depending on aliases and provenance.
+
+## CI policy
+
+Do not make ordinary CI runs fetch the internet and commit generated catalogue
+data. Build locally from pinned sources, inspect the generated manifest and
+summary, then publish a reviewed release. A manually triggered CI workflow may
+validate the selected release and import its exact checksum into an environment.
