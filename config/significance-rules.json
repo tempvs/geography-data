@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "earliestYear": { "year": 5000, "era": "BC" },
+  "periodRanges": {
+    "ANCIENT": { "from": { "year": 5000, "era": "BC" }, "to": { "year": 800, "era": "BC" } },
+    "ANTIQUITY": { "from": { "year": 800, "era": "BC" }, "to": { "year": 500, "era": "AD" } },
+    "EARLY_MIDDLE_AGES": { "from": { "year": 500, "era": "AD" }, "to": { "year": 1000, "era": "AD" } },
+    "HIGH_MIDDLE_AGES": { "from": { "year": 1000, "era": "AD" }, "to": { "year": 1250, "era": "AD" } },
+    "LATE_MIDDLE_AGES": { "from": { "year": 1250, "era": "AD" }, "to": { "year": 1500, "era": "AD" } },
+    "RENAISSANCE": { "from": { "year": 1400, "era": "AD" }, "to": { "year": 1600, "era": "AD" } },
+    "MODERN": { "from": { "year": 1500, "era": "AD" }, "to": { "year": 1914, "era": "AD" } },
+    "WWI": { "from": { "year": 1914, "era": "AD" }, "to": { "year": 1918, "era": "AD" } },
+    "WWII": { "from": { "year": 1939, "era": "AD" }, "to": { "year": 1945, "era": "AD" } },
+    "CONTEMPORARY": { "from": { "year": 1946, "era": "AD" }, "to": null }
+  },
+  "modern": {
+    "minimumPopulation": 5000,
+    "alwaysIncludeFeatureCodes": ["PPLC", "PPLCH", "PPLA", "PPLA2", "ANS", "MUS", "RGNH"]
+  },
+  "selectionReasons": [
+    "CURATED_HISTORICAL_GAZETTEER",
+    "CAPITAL_OR_ADMINISTRATIVE_CENTRE",
+    "HISTORIC_OR_ARCHAEOLOGICAL_SITE",
+    "BATTLEFIELD_OR_FORTIFICATION",
+    "RELIGIOUS_OR_CULTURAL_SITE",
+    "MUSEUM_ARCHIVE_OR_REPOSITORY",
+    "MODERN_POPULATION_THRESHOLD",
+    "REGIONAL_CENTRE",
+    "TEMPVS_CONTENT_REFERENCE"
+  ]
+}
