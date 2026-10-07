@@ -33,9 +33,11 @@ The processing order is:
 fetch -> normalize -> validate/deduplicate -> inspect -> bundle -> dev import -> promote same bundle
 ```
 
-The command-line interface currently validates and summarizes portable JSON or
-JSONL catalogues. It is the foundation for source adapters and bundle/import
-commands.
+The command-line interface fetches only explicitly configured source files,
+normalizes them locally, validates the result, emits a reviewable bundle, and
+never uploads anything. It does not use an external autocomplete API and it
+does not auto-merge different source records: likely duplicates are reported
+for human review.
 
 ## Local use
 
@@ -45,6 +47,39 @@ npm run check
 npm run geo -- validate data/samples/catalogue.sample.jsonl
 npm run geo -- summary data/samples/catalogue.sample.jsonl
 ```
+
+### Create a local first-pass dataset
+
+This is intentionally a local, manually reviewed operation. The two public
+downloads are cached under `data/raw/` (which is ignored by Git), while the
+generated bundle goes under `data/work/` (also ignored by Git).
+
+```powershell
+# Download only the configured public sources. Re-run with --force to refresh.
+npm run geo -- fetch geonames-cities5000
+npm run geo -- fetch pleiades-places
+
+# Optional: place a hand-curated Wikidata extract at
+# data/raw/wikidata/candidates.jsonl. See the fixture for the required JSONL shape.
+
+# Normalize, select transparent candidates, validate basic data, and build reports.
+npm run geo -- process --out data/work/first-pass
+
+# Inspect the result before any future import.
+Get-Content data/work/first-pass/summary.json
+Get-Content data/work/first-pass/duplicates.json
+Get-Content data/work/first-pass/rejections.jsonl
+npm run geo -- validate data/work/first-pass/catalogue.jsonl
+npm run geo -- inspect data/work/first-pass/catalogue.jsonl geonames-cities5000:3169070
+```
+
+`config/sources.json` is the pinned source registry. The current first pass
+uses GeoNames `cities5000` for significant modern settlements/admin centres
+and Pleiades for curated ancient places. A full Wikidata dump is deliberately
+not fetched automatically: add a small, documented curated extract when it is
+ready. Each fetched file receives adjacent metadata recording URL, access time,
+licence, byte size, and SHA-256. Pleiades' release currently contains a nested
+`data/gis/places.csv`; the configured extractor records that exact entry.
 
 ## File format
 

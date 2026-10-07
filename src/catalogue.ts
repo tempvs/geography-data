@@ -9,6 +9,8 @@ export type PlaceCandidate = {
   latitude: number;
   longitude: number;
   featureType: string;
+  aliases?: string[];
+  periods?: string[];
   selectionReasons: string[];
   sources: Array<{ dataset: string; externalId: string; license: string }>;
 };

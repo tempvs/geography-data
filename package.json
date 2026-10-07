@@ -5,11 +5,15 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "check": "npm run build && node dist/cli.js validate data/samples/catalogue.sample.jsonl && node dist/cli.js summary data/samples/catalogue.sample.jsonl",
+    "test": "npm run build && node --test dist/processor.test.js",
+    "check": "npm run test && node dist/cli.js validate data/samples/catalogue.sample.jsonl && node dist/cli.js summary data/samples/catalogue.sample.jsonl",
     "geo": "npm run build && node dist/cli.js"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
     "@types/node": "^22.13.10",
+    "adm-zip": "^0.6.1",
+    "csv-parse": "^7.0.3",
     "typescript": "^5.8.2"
   }
 }

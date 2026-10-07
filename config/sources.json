@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": "geonames-cities5000",
+      "kind": "GEONAMES_TSV",
+      "url": "https://download.geonames.org/export/dump/cities5000.zip",
+      "archiveEntry": "cities5000.txt",
+      "path": "data/raw/geonames/cities5000.txt",
+      "dataset": "GeoNames cities5000",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "id": "pleiades-places",
+      "kind": "PLEIADES_CSV",
+      "url": "https://atlantides.org/downloads/pleiades/gis/pleiades_gis_data.zip",
+      "archiveEntry": "data/gis/places.csv",
+      "path": "data/raw/pleiades/places.csv",
+      "dataset": "Pleiades",
+      "license": "CC-BY-3.0"
+    },
+    {
+      "id": "wikidata-curated",
+      "kind": "NORMALIZED_JSONL",
+      "path": "data/raw/wikidata/candidates.jsonl",
+      "dataset": "Wikidata curated",
+      "license": "CC0"
+    }
+  ]
+}

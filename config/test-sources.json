@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": "geonames-fixture",
+      "kind": "GEONAMES_TSV",
+      "path": "data/samples/raw/geonames/cities5000.txt",
+      "dataset": "GeoNames fixture",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "id": "pleiades-fixture",
+      "kind": "PLEIADES_CSV",
+      "path": "data/samples/raw/pleiades/places.csv",
+      "dataset": "Pleiades fixture",
+      "license": "CC-BY-3.0"
+    },
+    {
+      "id": "wikidata-fixture",
+      "kind": "NORMALIZED_JSONL",
+      "path": "data/samples/raw/wikidata/candidates.jsonl",
+      "dataset": "Wikidata fixture",
+      "license": "CC0"
+    }
+  ]
+}
