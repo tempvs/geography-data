@@ -1,0 +1,22 @@
+{
+  "@context": {},
+  "@graph": [
+    {
+      "id": "423025",
+      "title": "Rome",
+      "reprPoint": [12.4829, 41.8933],
+      "placeTypes": ["settlement"],
+      "names": [
+        { "romanized": "Roma", "start": -753, "end": 476, "language": "la" },
+        { "romanized": "Rome", "start": 476, "end": 2100, "language": "en" }
+      ]
+    },
+    {
+      "id": "197258",
+      "title": "Alexandria",
+      "reprPoint": [29.9187, 31.2001],
+      "placeTypes": ["settlement"],
+      "names": [{ "romanized": "Alexandria", "start": -331, "end": 641 }]
+    }
+  ]
+}

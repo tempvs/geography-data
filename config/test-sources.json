@@ -10,8 +10,8 @@
     },
     {
       "id": "pleiades-fixture",
-      "kind": "PLEIADES_CSV",
-      "path": "data/samples/raw/pleiades/places.csv",
+      "kind": "PLEIADES_JSON",
+      "path": "data/samples/raw/pleiades/places.json",
       "dataset": "Pleiades fixture",
       "license": "CC-BY-3.0"
     },

@@ -12,7 +12,17 @@ test("processes configured sources and leaves cross-source matches for review", 
   assert.equal(result.rejections.length, 1);
   assert.equal(result.rejections[0].reason, "BELOW_SIGNIFICANCE_THRESHOLD");
   assert.equal(result.duplicates.length, 1);
-  assert.deepEqual(result.duplicates[0].stableIds.sort(), ["geonames-fixture:3169070", "pleiades-fixture:423025"]);
+  assert.deepEqual(result.duplicates[0].stableIds.sort(), [
+    "geonames-fixture:3169070",
+    "pleiades-fixture:423025",
+  ]);
+  const rome = result.catalogue.find(
+    (candidate) => candidate.stableId === "pleiades-fixture:423025",
+  )!;
+  assert.deepEqual(rome.names, [
+    { value: "Roma", language: "la", validFrom: -753, validTo: 476 },
+    { value: "Rome", language: "en", validFrom: 476, validTo: 2100 },
+  ]);
 });
 
 test("requires explicit review then preserves merged provenance in an importable bundle", async () => {
@@ -20,19 +30,29 @@ test("requires explicit review then preserves merged provenance in an importable
   const firstPass = join(root, "first-pass");
   const reviewPath = join(root, "review.json");
   const curated = join(root, "curated");
-  await writeBundle(await processSources("config/test-sources.json"), firstPass);
+  await writeBundle(
+    await processSources("config/test-sources.json"),
+    firstPass,
+  );
   await initializeDuplicateReview(firstPass, reviewPath);
-  await assert.rejects(() => curateBundle(firstPass, reviewPath, curated), /still need a MERGE decision/);
+  await assert.rejects(
+    () => curateBundle(firstPass, reviewPath, curated),
+    /still need a MERGE decision/,
+  );
   const review = JSON.parse(await readFile(reviewPath, "utf8"));
   review.decisions[0].action = "MERGE";
   review.decisions[0].canonicalStableId = "pleiades-fixture:423025";
   await writeFile(reviewPath, JSON.stringify(review));
   const result = await curateBundle(firstPass, reviewPath, curated);
   assert.equal(result.catalogue.length, 4);
-  const rome = result.catalogue.find((candidate) => candidate.stableId === "pleiades-fixture:423025")!;
+  const rome = result.catalogue.find(
+    (candidate) => candidate.stableId === "pleiades-fixture:423025",
+  )!;
   assert.equal(rome.sources.length, 2);
   assert.ok(rome.aliases?.includes("Roma"));
-  const manifest = JSON.parse(await readFile(join(curated, "manifest.json"), "utf8"));
+  const manifest = JSON.parse(
+    await readFile(join(curated, "manifest.json"), "utf8"),
+  );
   assert.equal(manifest.summary.duplicateClusters, 0);
   assert.equal(manifest.curatedFrom.mergedClusters, 1);
 });
@@ -40,7 +60,9 @@ test("requires explicit review then preserves merged provenance in an importable
 test("writes a checksummed, inspectable bundle", async () => {
   const output = await mkdtemp(join(tmpdir(), "tempvs-geography-"));
   await writeBundle(await processSources("config/test-sources.json"), output);
-  const manifest = JSON.parse(await readFile(join(output, "manifest.json"), "utf8"));
+  const manifest = JSON.parse(
+    await readFile(join(output, "manifest.json"), "utf8"),
+  );
   assert.equal(manifest.summary.count, 5);
   assert.match(manifest.files["catalogue.jsonl"].sha256, /^[a-f0-9]{64}$/);
 });

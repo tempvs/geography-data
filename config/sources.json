@@ -12,10 +12,9 @@
     },
     {
       "id": "pleiades-places",
-      "kind": "PLEIADES_CSV",
-      "url": "https://atlantides.org/downloads/pleiades/gis/pleiades_gis_data.zip",
-      "archiveEntry": "data/gis/places.csv",
-      "path": "data/raw/pleiades/places.csv",
+      "kind": "PLEIADES_JSON",
+      "url": "https://atlantides.org/downloads/pleiades/json/pleiades-places-latest.json.gz",
+      "path": "data/raw/pleiades/pleiades-places-latest.json.gz",
       "dataset": "Pleiades",
       "license": "CC-BY-3.0"
     },
