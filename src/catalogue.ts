@@ -10,6 +10,14 @@ export type PlaceCandidate = {
   longitude: number;
   featureType: string;
   aliases?: string[];
+  /** Curated dated names supplement plain aliases where a source supports a
+   * defensible historical range. Years use astronomical numbering. */
+  names?: Array<{
+    value: string;
+    language?: string;
+    validFrom?: number;
+    validTo?: number;
+  }>;
   periods?: string[];
   selectionReasons: string[];
   sources: Array<{ dataset: string; externalId: string; license: string }>;
@@ -22,21 +30,47 @@ export type CatalogueSummary = {
   datasets: Record<string, number>;
 };
 
-function assertCandidate(value: unknown, line: number): asserts value is PlaceCandidate {
-  if (!value || typeof value !== "object") throw new Error(`Line ${line} is not an object.`);
+function assertCandidate(
+  value: unknown,
+  line: number,
+): asserts value is PlaceCandidate {
+  if (!value || typeof value !== "object")
+    throw new Error(`Line ${line} is not an object.`);
   const item = value as Partial<PlaceCandidate>;
   if (!item.stableId || !item.name || !item.featureType) {
     throw new Error(`Line ${line} is missing stableId, name, or featureType.`);
   }
-  if (!Number.isFinite(item.latitude) || !Number.isFinite(item.longitude)
-    || Math.abs(item.latitude as number) > 90 || Math.abs(item.longitude as number) > 180) {
+  if (
+    !Number.isFinite(item.latitude) ||
+    !Number.isFinite(item.longitude) ||
+    Math.abs(item.latitude as number) > 90 ||
+    Math.abs(item.longitude as number) > 180
+  ) {
     throw new Error(`Line ${line} has invalid coordinates.`);
   }
-  if (!Array.isArray(item.selectionReasons) || item.selectionReasons.length === 0) {
+  if (
+    !Array.isArray(item.selectionReasons) ||
+    item.selectionReasons.length === 0
+  ) {
     throw new Error(`Line ${line} needs at least one selection reason.`);
   }
   if (!Array.isArray(item.sources) || item.sources.length === 0) {
     throw new Error(`Line ${line} needs source provenance.`);
+  }
+  if (
+    item.names?.some(
+      (name) =>
+        !name ||
+        !name.value?.trim() ||
+        (name.validFrom !== undefined &&
+          !Number.isSafeInteger(name.validFrom)) ||
+        (name.validTo !== undefined && !Number.isSafeInteger(name.validTo)) ||
+        (name.validFrom !== undefined &&
+          name.validTo !== undefined &&
+          name.validFrom > name.validTo),
+    )
+  ) {
+    throw new Error(`Line ${line} has an invalid historical name.`);
   }
 }
 
@@ -44,7 +78,8 @@ export async function readCatalogue(path: string): Promise<PlaceCandidate[]> {
   if (path.endsWith(".json")) {
     const content = await readFile(path, "utf8");
     const values = JSON.parse(content) as unknown[];
-    if (!Array.isArray(values)) throw new Error("A .json catalogue must be an array.");
+    if (!Array.isArray(values))
+      throw new Error("A .json catalogue must be an array.");
     values.forEach((value, index) => assertCandidate(value, index + 1));
     return values as PlaceCandidate[];
   }
@@ -71,12 +106,15 @@ export function summarizeCatalogue(items: PlaceCandidate[]): CatalogueSummary {
     datasets: {},
   };
   for (const item of items) {
-    summary.featureTypes[item.featureType] = (summary.featureTypes[item.featureType] || 0) + 1;
+    summary.featureTypes[item.featureType] =
+      (summary.featureTypes[item.featureType] || 0) + 1;
     for (const reason of item.selectionReasons) {
-      summary.selectionReasons[reason] = (summary.selectionReasons[reason] || 0) + 1;
+      summary.selectionReasons[reason] =
+        (summary.selectionReasons[reason] || 0) + 1;
     }
     for (const source of item.sources) {
-      summary.datasets[source.dataset] = (summary.datasets[source.dataset] || 0) + 1;
+      summary.datasets[source.dataset] =
+        (summary.datasets[source.dataset] || 0) + 1;
     }
   }
   return summary;
