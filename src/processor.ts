@@ -56,6 +56,15 @@ const relevantCodes = new Set([
   "RGNH",
 ]);
 const modernPopulationThreshold = 5000;
+/**
+ * Gazetteers often represent a name that is still in use with an arbitrary
+ * upper bound (for example, Pleiades uses 2100).  Tempvs represents that
+ * explicitly as an open-ended interval instead: an omitted validTo means the
+ * name remains applicable today and into the future.  Keeping the reference
+ * year here makes a regenerated bundle follow the calendar without making
+ * historical end dates disappear.
+ */
+const openEndedAtOrAfterYear = new Date().getUTCFullYear();
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
@@ -95,10 +104,22 @@ function cleanHistoricalNames(
         value.validFrom > value.validTo)
     )
       return [];
-    const key = `${name}\u0000${value.language || ""}\u0000${value.validFrom ?? ""}\u0000${value.validTo ?? ""}`;
+    const validTo =
+      value.validTo !== undefined && value.validTo >= openEndedAtOrAfterYear
+        ? undefined
+        : value.validTo;
+    const key = `${name}\u0000${value.language || ""}\u0000${value.validFrom ?? ""}\u0000${validTo ?? ""}`;
     if (seen.has(key)) return [];
     seen.add(key);
-    return [{ ...value, value: name }];
+    const nameWithoutEnd = { ...value };
+    delete nameWithoutEnd.validTo;
+    return [
+      {
+        ...nameWithoutEnd,
+        value: name,
+        ...(validTo !== undefined ? { validTo } : {}),
+      },
+    ];
   });
 }
 

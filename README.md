@@ -113,6 +113,11 @@ Every record requires a stable external/Tempvs ID, name, WGS84 point, feature
 type, at least one transparent selection reason, and at least one source with
 licence/provenance.
 
+Historical place-name validity uses astronomical years internally. A missing
+`validTo` is intentional and means the name remains current indefinitely. The
+processor converts source-specific present/future horizons (such as `2100`) to
+that open-ended form; real historical end dates are retained.
+
 ## Release layout
 
 Canonical places are **not** split primarily by historical period: one place

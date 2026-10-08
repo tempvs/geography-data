@@ -21,7 +21,7 @@ test("processes configured sources and leaves cross-source matches for review", 
   )!;
   assert.deepEqual(rome.names, [
     { value: "Roma", language: "la", validFrom: -753, validTo: 476 },
-    { value: "Rome", language: "en", validFrom: 476, validTo: 2100 },
+    { value: "Rome", language: "en", validFrom: 476 },
   ]);
 });
 
