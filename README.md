@@ -140,3 +140,14 @@ Do not make ordinary CI runs fetch the internet and commit generated catalogue
 data. Build locally from pinned sources, inspect the generated manifest and
 summary, then publish a reviewed release. A manually triggered CI workflow may
 validate the selected release and import its exact checksum into an environment.
+
+### Checked-in development pilot
+
+`data/releases/dev-pilot-v1` is a deliberately small, reviewed development
+bundle: Rome, Mainz (Mogontiacum), Regensburg (Castra Regina), Dura-Europos,
+and Krefeld (Gelduba). It is kept in Git so development environments can repeat
+the exact import without re-fetching external data. Validate it with:
+
+```powershell
+npm.cmd run geo -- validate data/releases/dev-pilot-v1/catalogue.jsonl
+```

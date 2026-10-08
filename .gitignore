@@ -4,4 +4,8 @@ dist/
 data/raw/
 data/work/
 data/releases/
+!data/releases/
+!data/releases/dev-pilot-v1/
+!data/releases/dev-pilot-v1/catalogue.jsonl
+!data/releases/dev-pilot-v1/manifest.json
 *.log

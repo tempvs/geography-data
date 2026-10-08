@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "createdAt": "2026-10-07T00:00:00.000Z",
+  "files": {
+    "catalogue.jsonl": {
+      "sha256": "bd594ccb5896e24f034a4f6a9e7ce9c6de5be35e805b1086cf4184bda6842761",
+      "bytes": 1510
+    }
+  },
+  "summary": {
+    "count": 5,
+    "duplicateClusters": 0
+  },
+  "deterministicInputs": true,
+  "note": "Curated development pilot: Rome, Mainz, Regensburg/Castra Regina, Dura-Europos, and Krefeld/Gelduba."
+}
