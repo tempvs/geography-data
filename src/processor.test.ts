@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { processSources, writeBundle } from "./processor.js";
 import { curateBundle, initializeDuplicateReview } from "./curation.js";
+import { readCatalogue } from "./catalogue.js";
 
 test("processes configured sources and leaves cross-source matches for review", async () => {
   const result = await processSources("config/test-sources.json");
@@ -65,4 +66,38 @@ test("writes a checksummed, inspectable bundle", async () => {
   );
   assert.equal(manifest.summary.count, 5);
   assert.match(manifest.files["catalogue.jsonl"].sha256, /^[a-f0-9]{64}$/);
+});
+
+test("rejects malformed aliases, provenance, and historical-name metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tempvs-geography-validation-"));
+  const catalogue = join(root, "bad.jsonl");
+  const valid = {
+    stableId: "curated:rome",
+    name: "Rome",
+    latitude: 41.89,
+    longitude: 12.48,
+    featureType: "HISTORIC_SETTLEMENT",
+    selectionReasons: ["CURATED"],
+    sources: [{ dataset: "Manual", externalId: "rome", license: "CC0" }],
+  };
+  await writeFile(
+    catalogue,
+    `${JSON.stringify({ ...valid, aliases: [" "] })}\n`,
+  );
+  await assert.rejects(() => readCatalogue(catalogue), /invalid alias/);
+
+  await writeFile(
+    catalogue,
+    `${JSON.stringify({
+      ...valid,
+      sources: [{ dataset: "Manual", externalId: "rome", license: "" }],
+    })}\n`,
+  );
+  await assert.rejects(() => readCatalogue(catalogue), /source provenance/);
+
+  await writeFile(
+    catalogue,
+    `${JSON.stringify({ ...valid, names: { value: "Roma" } })}\n`,
+  );
+  await assert.rejects(() => readCatalogue(catalogue), /invalid historical name/);
 });

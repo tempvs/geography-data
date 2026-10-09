@@ -37,7 +37,14 @@ function assertCandidate(
   if (!value || typeof value !== "object")
     throw new Error(`Line ${line} is not an object.`);
   const item = value as Partial<PlaceCandidate>;
-  if (!item.stableId || !item.name || !item.featureType) {
+  if (
+    typeof item.stableId !== "string" ||
+    !/^[a-z0-9][a-z0-9:._-]{1,240}$/i.test(item.stableId) ||
+    typeof item.name !== "string" ||
+    !item.name.trim() ||
+    typeof item.featureType !== "string" ||
+    !item.featureType.trim()
+  ) {
     throw new Error(`Line ${line} is missing stableId, name, or featureType.`);
   }
   if (
@@ -50,18 +57,52 @@ function assertCandidate(
   }
   if (
     !Array.isArray(item.selectionReasons) ||
-    item.selectionReasons.length === 0
+    item.selectionReasons.length === 0 ||
+    item.selectionReasons.some(
+      (reason) => typeof reason !== "string" || !reason.trim(),
+    )
   ) {
     throw new Error(`Line ${line} needs at least one selection reason.`);
   }
-  if (!Array.isArray(item.sources) || item.sources.length === 0) {
+  if (
+    !Array.isArray(item.sources) ||
+    item.sources.length === 0 ||
+    item.sources.some(
+      (source) =>
+        !source ||
+        typeof source.dataset !== "string" ||
+        !source.dataset.trim() ||
+        typeof source.externalId !== "string" ||
+        !source.externalId.trim() ||
+        typeof source.license !== "string" ||
+        !source.license.trim(),
+    )
+  ) {
     throw new Error(`Line ${line} needs source provenance.`);
   }
   if (
+    item.aliases !== undefined &&
+    (!Array.isArray(item.aliases) ||
+      item.aliases.some((alias) => typeof alias !== "string" || !alias.trim()))
+  ) {
+    throw new Error(`Line ${line} has an invalid alias.`);
+  }
+  if (
+    item.periods !== undefined &&
+    (!Array.isArray(item.periods) ||
+      item.periods.some((period) => typeof period !== "string" || !period.trim()))
+  ) {
+    throw new Error(`Line ${line} has an invalid period.`);
+  }
+  if (
+    (item.names !== undefined && !Array.isArray(item.names)) ||
     item.names?.some(
       (name) =>
         !name ||
+        typeof name.value !== "string" ||
         !name.value?.trim() ||
+        (name.language !== undefined &&
+          (typeof name.language !== "string" || !name.language.trim())) ||
         (name.validFrom !== undefined &&
           !Number.isSafeInteger(name.validFrom)) ||
         (name.validTo !== undefined && !Number.isSafeInteger(name.validTo)) ||
