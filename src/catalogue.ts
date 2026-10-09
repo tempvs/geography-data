@@ -132,7 +132,7 @@ export async function readCatalogue(path: string): Promise<PlaceCandidate[]> {
     if (!Array.isArray(values))
       throw new Error("A .json catalogue must be an array.");
     values.forEach((value, index) => assertCandidate(value, index + 1));
-    return values as PlaceCandidate[];
+    return validateCatalogueRelationships(values as PlaceCandidate[]);
   }
   const input = createReadStream(path);
   const stream = path.endsWith(".gz") ? input.pipe(createGunzip()) : input;
@@ -146,7 +146,39 @@ export async function readCatalogue(path: string): Promise<PlaceCandidate[]> {
     assertCandidate(value, line);
     result.push(value);
   }
-  return result;
+  return validateCatalogueRelationships(result);
+}
+
+/** A bundle must be able to reproduce the same canonical hierarchy in every
+ * environment. Reject ambiguous stable IDs and impossible parent loops while
+ * it is still a local review artifact, rather than discovering them after
+ * partial DynamoDB writes. A parent may be absent only for a deliberately
+ * partial chunk; that is reported by the import reconciliation stage. */
+function validateCatalogueRelationships(
+  values: PlaceCandidate[],
+): PlaceCandidate[] {
+  const byId = new Map<string, PlaceCandidate>();
+  for (const value of values) {
+    if (byId.has(value.stableId))
+      throw new Error(`Duplicate stable ID: ${value.stableId}.`);
+    if (value.parentStableId === value.stableId)
+      throw new Error(`Place cannot be its own parent: ${value.stableId}.`);
+    byId.set(value.stableId, value);
+  }
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const visit = (stableId: string) => {
+    if (visited.has(stableId)) return;
+    if (visiting.has(stableId))
+      throw new Error(`Parent hierarchy contains a cycle at: ${stableId}.`);
+    visiting.add(stableId);
+    const parentId = byId.get(stableId)?.parentStableId;
+    if (parentId && byId.has(parentId)) visit(parentId);
+    visiting.delete(stableId);
+    visited.add(stableId);
+  };
+  for (const value of values) visit(value.stableId);
+  return values;
 }
 
 export function summarizeCatalogue(items: PlaceCandidate[]): CatalogueSummary {

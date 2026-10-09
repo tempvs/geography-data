@@ -109,3 +109,45 @@ test("rejects malformed aliases, provenance, and historical-name metadata", asyn
   );
   await assert.rejects(() => readCatalogue(catalogue), /invalid parent stable ID/);
 });
+
+test("rejects duplicate stable keys and impossible parent hierarchies", async () => {
+  const duplicate = await temporaryCatalogue([
+    candidate({ stableId: "wikidata:q1" }),
+    candidate({ stableId: "wikidata:q1", name: "Also Rome" }),
+  ]);
+  await assert.rejects(() => readCatalogue(duplicate), /Duplicate stable ID/);
+
+  const selfParent = await temporaryCatalogue([
+    candidate({ stableId: "wikidata:q2", parentStableId: "wikidata:q2" }),
+  ]);
+  await assert.rejects(() => readCatalogue(selfParent), /own parent/);
+
+  const cycle = await temporaryCatalogue([
+    candidate({ stableId: "wikidata:q3", parentStableId: "wikidata:q4" }),
+    candidate({ stableId: "wikidata:q4", parentStableId: "wikidata:q3" }),
+  ]);
+  await assert.rejects(() => readCatalogue(cycle), /contains a cycle/);
+});
+
+function candidate(overrides: Record<string, unknown>) {
+  return {
+    stableId: "wikidata:q0",
+    name: "Rome",
+    latitude: 41.89,
+    longitude: 12.48,
+    featureType: "HISTORIC_SETTLEMENT",
+    selectionReasons: ["CURATED"],
+    sources: [{ dataset: "Manual", externalId: "rome", license: "CC0" }],
+    ...overrides,
+  };
+}
+
+async function temporaryCatalogue(values: unknown[]): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), "tempvs-geography-validation-"));
+  const catalogue = join(root, "catalogue.jsonl");
+  await writeFile(
+    catalogue,
+    values.map((value) => JSON.stringify(value)).join("\n") + "\n",
+  );
+  return catalogue;
+}
