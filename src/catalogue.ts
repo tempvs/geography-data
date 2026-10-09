@@ -28,6 +28,11 @@ export type PlaceCandidate = {
 
 export type CatalogueSummary = {
   count: number;
+  parentRelationships: {
+    declared: number;
+    resolvedWithinBundle: number;
+    unresolvedParent: number;
+  };
   featureTypes: Record<string, number>;
   selectionReasons: Record<string, number>;
   datasets: Record<string, number>;
@@ -182,13 +187,25 @@ function validateCatalogueRelationships(
 }
 
 export function summarizeCatalogue(items: PlaceCandidate[]): CatalogueSummary {
+  const stableIds = new Set(items.map((item) => item.stableId));
   const summary: CatalogueSummary = {
     count: items.length,
+    parentRelationships: {
+      declared: 0,
+      resolvedWithinBundle: 0,
+      unresolvedParent: 0,
+    },
     featureTypes: {},
     selectionReasons: {},
     datasets: {},
   };
   for (const item of items) {
+    if (item.parentStableId) {
+      summary.parentRelationships.declared += 1;
+      if (stableIds.has(item.parentStableId))
+        summary.parentRelationships.resolvedWithinBundle += 1;
+      else summary.parentRelationships.unresolvedParent += 1;
+    }
     summary.featureTypes[item.featureType] =
       (summary.featureTypes[item.featureType] || 0) + 1;
     for (const reason of item.selectionReasons) {

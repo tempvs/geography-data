@@ -138,6 +138,7 @@ function candidate(
   aliases: string[] = [],
   periods: string[] = [],
   names: NonNullable<PlaceCandidate["names"]> = [],
+  parentStableId?: string,
 ): PlaceCandidate {
   return {
     stableId: `${source.id}:${externalId}`,
@@ -147,6 +148,7 @@ function candidate(
     latitude,
     longitude,
     featureType,
+    ...(parentStableId ? { parentStableId } : {}),
     periods: [...new Set(periods)],
     selectionReasons: [...new Set(selectionReasons)],
     sources: [sourceOf(source, externalId)],
@@ -518,6 +520,12 @@ async function processNormalized(
           (period): period is string => typeof period === "string",
         )
       : [];
+    const rawParentStableId = stringValue(raw.parentStableId);
+    const parentStableId = rawParentStableId
+      ? rawParentStableId.includes(":")
+        ? rawParentStableId
+        : `${source.id}:${rawParentStableId}`
+      : undefined;
     result.candidates.push(
       candidate(
         source,
@@ -530,6 +538,7 @@ async function processNormalized(
         aliases,
         periods,
         names,
+        parentStableId,
       ),
     );
     result.sourceStats[source.id].accepted += 1;

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { processSources, writeBundle } from "./processor.js";
 import { curateBundle, initializeDuplicateReview } from "./curation.js";
-import { readCatalogue } from "./catalogue.js";
+import { readCatalogue, summarizeCatalogue } from "./catalogue.js";
 
 test("processes configured sources and leaves cross-source matches for review", async () => {
   const result = await processSources("config/test-sources.json");
@@ -127,6 +127,56 @@ test("rejects duplicate stable keys and impossible parent hierarchies", async ()
     candidate({ stableId: "wikidata:q4", parentStableId: "wikidata:q3" }),
   ]);
   await assert.rejects(() => readCatalogue(cycle), /contains a cycle/);
+});
+
+test("retains normalized parent relationships and reports unresolved parents", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tempvs-geography-parent-"));
+  const source = join(root, "places.jsonl");
+  await writeFile(
+    source,
+    [
+      candidate({ stableId: "region", name: "Latium" }),
+      candidate({
+        stableId: "rome",
+        name: "Rome",
+        parentStableId: "region",
+      }),
+      candidate({
+        stableId: "orphan",
+        name: "Far point",
+        parentStableId: "other-source:missing",
+      }),
+    ]
+      .map((item) => JSON.stringify(item))
+      .join("\n") + "\n",
+  );
+  const config = join(root, "sources.json");
+  await writeFile(
+    config,
+    JSON.stringify({
+      version: 1,
+      sources: [
+        {
+          id: "curated",
+          kind: "NORMALIZED_JSONL",
+          path: source,
+          dataset: "Manual",
+          license: "CC0",
+        },
+      ],
+    }),
+  );
+  const result = await processSources(config);
+  assert.equal(
+    result.catalogue.find((item) => item.stableId === "curated:rome")
+      ?.parentStableId,
+    "curated:region",
+  );
+  assert.deepEqual(summarizeCatalogue(result.catalogue).parentRelationships, {
+    declared: 2,
+    resolvedWithinBundle: 1,
+    unresolvedParent: 1,
+  });
 });
 
 function candidate(overrides: Record<string, unknown>) {
