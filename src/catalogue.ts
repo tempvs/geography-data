@@ -9,6 +9,9 @@ export type PlaceCandidate = {
   latitude: number;
   longitude: number;
   featureType: string;
+  /** Optional canonical parent stable key. It is intentionally not a fixed
+   * country/region column: hierarchy depth varies by place and period. */
+  parentStableId?: string;
   aliases?: string[];
   /** Curated dated names supplement plain aliases where a source supports a
    * defensible historical range. Years use astronomical numbering. */
@@ -46,6 +49,13 @@ function assertCandidate(
     !item.featureType.trim()
   ) {
     throw new Error(`Line ${line} is missing stableId, name, or featureType.`);
+  }
+  if (
+    item.parentStableId !== undefined &&
+    (typeof item.parentStableId !== "string" ||
+      !/^[a-z0-9][a-z0-9:._-]{1,240}$/i.test(item.parentStableId))
+  ) {
+    throw new Error(`Line ${line} has an invalid parent stable ID.`);
   }
   if (
     !Number.isFinite(item.latitude) ||

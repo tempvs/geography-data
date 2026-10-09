@@ -102,4 +102,10 @@ test("rejects malformed aliases, provenance, and historical-name metadata", asyn
     `${JSON.stringify({ ...valid, names: { value: "Roma" } })}\n`,
   );
   await assert.rejects(() => readCatalogue(catalogue), /invalid historical name/);
+
+  await writeFile(
+    catalogue,
+    `${JSON.stringify({ ...valid, parentStableId: "not valid parent" })}\n`,
+  );
+  await assert.rejects(() => readCatalogue(catalogue), /invalid parent stable ID/);
 });
