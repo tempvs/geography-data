@@ -668,6 +668,16 @@ export async function writeBundle(
   );
   const manifest = {
     version: 1,
+    /** Derived only from deterministic file contents, never from createdAt.
+     * It is therefore safe to use as the immutable release/audit key across
+     * dev, staging, and production imports. */
+    artifactId: `geo-v1-${createHash("sha256")
+      .update(candidates.sha256)
+      .update(catalogue.sha256)
+      .update(rejections.sha256)
+      .digest("hex")
+      .slice(0, 24)}`,
+    transformVersion: 1,
     createdAt: new Date().toISOString(),
     files: {
       "candidates.jsonl": candidates,
