@@ -238,9 +238,9 @@ async function processGeoNames(
       longitudeRaw,
       featureClass,
       featureCode,
+      countryCode,
       ,
-      ,
-      ,
+      admin1Code,
       ,
       ,
       ,
@@ -292,16 +292,49 @@ async function processGeoNames(
       candidate(
         source,
         externalId,
-        name,
+        modernSettlementDisplayName(name, countryCode, admin1Code),
         latitude!,
         longitude!,
         featureClass === "P" ? "SETTLEMENT" : featureCode,
         reasons,
-        aliases,
+        [name, ...aliases],
         ["CONTEMPORARY"],
       ),
     );
     result.sourceStats[source.id].accepted += 1;
+  }
+}
+
+/**
+ * GeoNames supplies a settlement and ISO administrative codes, not the
+ * complete human-facing label. Keep the short settlement name as an alias for
+ * lookup, while making a modern canonical display label unambiguous. The US
+ * convention includes its state abbreviation because country alone is often
+ * insufficient (for example, King of Prussia, PA, USA).
+ */
+export function modernSettlementDisplayName(
+  settlement: string,
+  countryCode: string | undefined,
+  admin1Code: string | undefined,
+): string {
+  const name = settlement.trim();
+  const country = countryCode ? countryDisplayName(countryCode) : undefined;
+  if (!country) return name;
+  if (countryCode === "US" && admin1Code?.trim())
+    return `${name}, ${admin1Code.trim()}, ${country}`;
+  return `${name}, ${country}`;
+}
+
+function countryDisplayName(code: string): string | undefined {
+  try {
+    const display = new Intl.DisplayNames(["en"], { type: "region" }).of(
+      code,
+    );
+    if (!display || display === code) return undefined;
+    // Product copy uses USA rather than the longer formal country name.
+    return code === "US" ? "USA" : display;
+  } catch {
+    return undefined;
   }
 }
 
@@ -548,18 +581,50 @@ async function processNormalized(
 function duplicateClusters(
   candidates: PlaceCandidate[],
 ): ProcessResult["duplicates"] {
-  const clusters = new Map<string, PlaceCandidate[]>();
+  const clusters = new Map<string, Map<string, PlaceCandidate>>();
   for (const place of candidates) {
-    const key = `${place.name.normalize("NFKD").replace(/[^\w]/g, "").toLowerCase()}@${place.latitude.toFixed(2)},${place.longitude.toFixed(2)}`;
-    clusters.set(key, [...(clusters.get(key) ?? []), place]);
+    // A modern canonical label may be qualified ("Rome, Italy") while a
+    // historical source still calls the same point simply "Rome". Compare
+    // every explicitly retained name at the same approximate point, instead
+    // of treating display qualification as evidence that two records differ.
+    const labels = [
+      place.name,
+      ...(place.aliases ?? []),
+      ...(place.names ?? []).map((name) => name.value),
+    ];
+    for (const label of new Set(labels.map(normalizeDuplicateLabel))) {
+      if (!label) continue;
+      const key = `${label}@${place.latitude.toFixed(2)},${place.longitude.toFixed(2)}`;
+      const cluster = clusters.get(key) ?? new Map<string, PlaceCandidate>();
+      cluster.set(place.stableId, place);
+      clusters.set(key, cluster);
+    }
   }
+  const emitted = new Set<string>();
   return [...clusters.entries()]
-    .filter(([, items]) => items.length > 1)
-    .map(([key, items]) => ({
+    .map(([key, items]) => ({ key, items: [...items.values()] }))
+    .filter(({ items }) => items.length > 1)
+    .filter(({ items }) => {
+      const signature = items
+        .map((item) => item.stableId)
+        .sort()
+        .join("|");
+      if (emitted.has(signature)) return false;
+      emitted.add(signature);
+      return true;
+    })
+    .map(({ key, items }) => ({
       key,
       stableIds: items.map((item) => item.stableId),
       names: items.map((item) => item.name),
     }));
+}
+
+function normalizeDuplicateLabel(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[^\p{L}\p{N}]/gu, "")
+    .toLocaleLowerCase();
 }
 
 export async function loadSourceConfig(

@@ -3,14 +3,14 @@
   "createdAt": "2026-10-07T00:00:00.000Z",
   "files": {
     "catalogue.jsonl": {
-      "sha256": "c9e0ac82b3f33d46767262acb43b6bed5ce656586b4d35a8a98dec4cece8af68",
-      "bytes": 1894
+      "sha256": "78b5b33efbbc8a99d5e4ecac3ac8e512ebca5afaf21119d85d6a6badb22d6de8",
+      "bytes": 2242
     }
   },
   "summary": {
-    "count": 5,
+    "count": 6,
     "duplicateClusters": 0
   },
   "deterministicInputs": true,
-  "note": "Curated development pilot: Rome, Mainz, Regensburg/Castra Regina, Dura-Europos, and Krefeld/Gelduba."
+  "note": "Curated development pilot: Rome, Mainz, Regensburg/Castra Regina, Dura-Europos, Krefeld/Gelduba, and King of Prussia, PA, USA."
 }

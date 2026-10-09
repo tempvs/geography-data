@@ -3,7 +3,11 @@ import test from "node:test";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { processSources, writeBundle } from "./processor.js";
+import {
+  modernSettlementDisplayName,
+  processSources,
+  writeBundle,
+} from "./processor.js";
 import { curateBundle, initializeDuplicateReview } from "./curation.js";
 import { readCatalogue, summarizeCatalogue } from "./catalogue.js";
 
@@ -24,6 +28,21 @@ test("processes configured sources and leaves cross-source matches for review", 
     { value: "Roma", language: "la", validFrom: -753, validTo: 476 },
     { value: "Rome", language: "en", validFrom: 476 },
   ]);
+  assert.equal(
+    result.catalogue.find(
+      (candidate) => candidate.stableId === "geonames-fixture:3169070",
+    )?.name,
+    "Rome, Italy",
+  );
+});
+
+test("qualifies modern settlement display names while retaining short aliases", () => {
+  assert.equal(modernSettlementDisplayName("Rome", "IT", "07"), "Rome, Italy");
+  assert.equal(
+    modernSettlementDisplayName("King of Prussia", "US", "PA"),
+    "King of Prussia, PA, USA",
+  );
+  assert.equal(modernSettlementDisplayName("Unknown", undefined, undefined), "Unknown");
 });
 
 test("requires explicit review then preserves merged provenance in an importable bundle", async () => {
