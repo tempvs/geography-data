@@ -229,12 +229,16 @@ export async function curateBundle(
       join(bundle, "summary.json"),
     )
   ).sourceStats;
+  const sourceRegistry = (
+    JSON.parse(manifestText) as { sourceRegistry?: ProcessResult["sources"] }
+  ).sourceRegistry;
   const result: ProcessResult = {
     candidates,
     catalogue: curated,
     rejections,
     duplicates: [],
     sourceStats,
+    sources: sourceRegistry || [],
   };
   await writeBundle(result, outputDirectory);
 

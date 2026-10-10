@@ -41,6 +41,8 @@ export type ProcessResult = {
   rejections: Rejection[];
   duplicates: Array<{ key: string; stableIds: string[]; names: string[] }>;
   sourceStats: Record<string, { accepted: number; rejected: number }>;
+  /** Pinned source/licence registry captured in every release manifest. */
+  sources: SourceDefinition[];
 };
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -776,6 +778,7 @@ export async function processSources(
     rejections: [],
     duplicates: [],
     sourceStats: {},
+    sources: config.sources.map((source) => ({ ...source })),
   };
   for (const source of config.sources) {
     result.sourceStats[source.id] = { accepted: 0, rejected: 0 };
@@ -871,6 +874,14 @@ export async function writeBundle(
       "rejections.jsonl": rejections,
     },
     summary,
+    sourceRegistry: result.sources.map((source) => ({
+      id: source.id,
+      kind: source.kind,
+      dataset: source.dataset,
+      license: source.license,
+      ...(source.url ? { url: source.url } : {}),
+      ...(source.archiveEntry ? { archiveEntry: source.archiveEntry } : {}),
+    })),
     deterministicInputs: true,
     note: "Cross-source duplicate clusters are review hints and are never auto-merged.",
   };

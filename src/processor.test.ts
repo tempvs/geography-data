@@ -90,6 +90,13 @@ test("writes a checksummed, inspectable bundle", async () => {
   assert.match(manifest.files["catalogue.jsonl"].sha256, /^[a-f0-9]{64}$/);
   assert.match(manifest.artifactId, /^geo-v1-[a-f0-9]{24}$/);
   assert.equal(manifest.transformVersion, 1);
+  assert.equal(manifest.sourceRegistry.length, 3);
+  assert.deepEqual(manifest.sourceRegistry[0], {
+    id: "geonames-fixture",
+    kind: "GEONAMES_TSV",
+    dataset: "GeoNames fixture",
+    license: "CC-BY-4.0",
+  });
 });
 
 test("rejects malformed aliases, provenance, and historical-name metadata", async () => {
