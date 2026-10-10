@@ -173,4 +173,5 @@ the exact import without re-fetching external data. Validate it with:
 
 ```powershell
 npm.cmd run geo -- validate data/releases/dev-pilot-v1/catalogue.jsonl
+npm.cmd run geo -- release:verify data/releases/dev-pilot-v1
 ```

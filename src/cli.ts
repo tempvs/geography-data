@@ -1,7 +1,11 @@
 import { readCatalogue, summarizeCatalogue } from "./catalogue.js";
 import { curateBundle, initializeDuplicateReview } from "./curation.js";
 import { fetchSource, processSources, writeBundle } from "./processor.js";
-import { fetchReviewedBundle, publishReviewedBundle } from "./release.js";
+import {
+  fetchReviewedBundle,
+  publishReviewedBundle,
+  verifyReviewedBundle,
+} from "./release.js";
 
 const [command, ...arguments_] = process.argv.slice(2);
 const path = arguments_[0];
@@ -16,6 +20,7 @@ if (!command || command === "help" || command === "--help") {
   geo review:init <first-pass-bundle> [--out data/work/review-decisions.json]
   geo curate <first-pass-bundle> --decisions <review-decisions.json> --out data/work/<reviewed-release>
   geo publish --bundle <reviewed-bundle> --bucket <artifact-bucket> [--prefix tempvs/geography] [--apply]
+  geo release:verify <reviewed-bundle>
   geo release:fetch <artifact-id> --bucket <artifact-bucket> --out <new-directory> [--prefix tempvs/geography]
 
 fetch downloads only explicitly configured data. process never downloads data.`);
@@ -81,6 +86,23 @@ if (command === "publish") {
         prefix: option("--prefix", "tempvs/geography"),
         apply: arguments_.includes("--apply"),
       }),
+      null,
+      2,
+    ),
+  );
+  process.exit(0);
+}
+
+if (command === "release:verify") {
+  if (!path) throw new Error("release:verify requires a reviewed bundle directory.");
+  const bundle = await verifyReviewedBundle(path);
+  console.log(
+    JSON.stringify(
+      {
+        artifactId: bundle.artifactId,
+        files: Object.keys(bundle.files).sort(),
+        sourceRegistry: bundle.manifest.sourceRegistry?.map((source) => source.id),
+      },
       null,
       2,
     ),
