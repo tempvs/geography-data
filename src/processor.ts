@@ -45,6 +45,16 @@ export type ProcessResult = {
   sources: SourceDefinition[];
 };
 
+export type ProcessProgress = {
+  sourceId: string;
+  stage: "STARTED" | "PROGRESS" | "COMPLETED";
+  processed: number;
+  accepted: number;
+  rejected: number;
+};
+
+type ProgressReporter = (progress: ProcessProgress) => void;
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const projectPath = (path: string) =>
   isAbsolute(path) ? path : resolve(ROOT, path);
@@ -291,13 +301,16 @@ function pleiadesNames(
 async function processGeoNames(
   source: SourceDefinition,
   result: ProcessResult,
+  report?: ProgressReporter,
 ): Promise<void> {
   const rows = createInterface({
     input: createReadStream(projectPath(source.path)),
     crlfDelay: Infinity,
   });
+  let processed = 0;
   for await (const row of rows) {
     if (!row.trim() || row.startsWith("#")) continue;
+    processed += 1;
     const fields = row.split("\t");
     const [
       externalId,
@@ -372,6 +385,8 @@ async function processGeoNames(
       ),
     );
     result.sourceStats[source.id].accepted += 1;
+    if (processed % 10_000 === 0)
+      reportProgress(report, source.id, "PROGRESS", processed, result);
   }
 }
 
@@ -426,6 +441,7 @@ function headerValue(
 async function processPleiades(
   source: SourceDefinition,
   result: ProcessResult,
+  report?: ProgressReporter,
 ): Promise<void> {
   const text = await readFile(projectPath(source.path), "utf8");
   const rows = parse(text, {
@@ -433,7 +449,9 @@ async function processPleiades(
     skip_empty_lines: true,
     relax_column_count: true,
   }) as Record<string, string>[];
+  let processed = 0;
   for (const row of rows) {
+    processed += 1;
     const externalId = headerValue(row, ["id", "pid"]);
     const name = headerValue(row, ["title", "name"]);
     const latitude = numericValue(
@@ -480,6 +498,8 @@ async function processPleiades(
       ),
     );
     result.sourceStats[source.id].accepted += 1;
+    if (processed % 10_000 === 0)
+      reportProgress(report, source.id, "PROGRESS", processed, result);
   }
 }
 
@@ -492,6 +512,7 @@ async function processPleiades(
 async function processPleiadesJson(
   source: SourceDefinition,
   result: ProcessResult,
+  report?: ProgressReporter,
 ): Promise<void> {
   const sourcePath = projectPath(source.path);
   const raw = createReadStream(sourcePath);
@@ -500,7 +521,9 @@ async function processPleiadesJson(
     .pipe(parser())
     .pipe(pick.asStream({ filter: "@graph" }))
     .pipe(streamArray.asStream());
+  let processed = 0;
   for await (const item of records as AsyncIterable<{ value: unknown }>) {
+    processed += 1;
     if (
       !item.value ||
       typeof item.value !== "object" ||
@@ -545,19 +568,24 @@ async function processPleiadesJson(
       ),
     );
     result.sourceStats[source.id].accepted += 1;
+    if (processed % 10_000 === 0)
+      reportProgress(report, source.id, "PROGRESS", processed, result);
   }
 }
 
 async function processNormalized(
   source: SourceDefinition,
   result: ProcessResult,
+  report?: ProgressReporter,
 ): Promise<void> {
   const rows = createInterface({
     input: createReadStream(projectPath(source.path)),
     crlfDelay: Infinity,
   });
+  let processed = 0;
   for await (const row of rows) {
     if (!row.trim()) continue;
+    processed += 1;
     const raw = JSON.parse(row) as Record<string, unknown>;
     const externalId = stringValue(raw.id) ?? stringValue(raw.stableId);
     const name = stringValue(raw.name);
@@ -689,6 +717,8 @@ async function processNormalized(
       ),
     );
     result.sourceStats[source.id].accepted += 1;
+    if (processed % 10_000 === 0)
+      reportProgress(report, source.id, "PROGRESS", processed, result);
   }
 }
 
@@ -770,6 +800,7 @@ export async function loadSourceConfig(
 
 export async function processSources(
   configPath = "config/sources.json",
+  report?: ProgressReporter,
 ): Promise<ProcessResult> {
   const config = await loadSourceConfig(configPath);
   const result: ProcessResult = {
@@ -782,6 +813,7 @@ export async function processSources(
   };
   for (const source of config.sources) {
     result.sourceStats[source.id] = { accepted: 0, rejected: 0 };
+    reportProgress(report, source.id, "STARTED", 0, result);
     if (!existsSync(projectPath(source.path))) {
       result.rejections.push({
         source: source.id,
@@ -790,20 +822,47 @@ export async function processSources(
         detail: source.path,
       });
       result.sourceStats[source.id].rejected += 1;
+      reportProgress(report, source.id, "COMPLETED", 0, result);
       continue;
     }
-    if (source.kind === "GEONAMES_TSV") await processGeoNames(source, result);
-    if (source.kind === "PLEIADES_CSV") await processPleiades(source, result);
+    if (source.kind === "GEONAMES_TSV") await processGeoNames(source, result, report);
+    if (source.kind === "PLEIADES_CSV") await processPleiades(source, result, report);
     if (source.kind === "PLEIADES_JSON")
-      await processPleiadesJson(source, result);
+      await processPleiadesJson(source, result, report);
     if (source.kind === "NORMALIZED_JSONL")
-      await processNormalized(source, result);
+      await processNormalized(source, result, report);
+    const stats = result.sourceStats[source.id];
+    report?.({
+      sourceId: source.id,
+      stage: "COMPLETED",
+      processed: stats.accepted + stats.rejected,
+      accepted: stats.accepted,
+      rejected: stats.rejected,
+    });
   }
   result.catalogue = [...result.candidates].sort((a, b) =>
     a.stableId.localeCompare(b.stableId),
   );
   result.duplicates = duplicateClusters(result.catalogue);
   return result;
+}
+
+function reportProgress(
+  report: ProgressReporter | undefined,
+  sourceId: string,
+  stage: ProcessProgress["stage"],
+  processed: number,
+  result: ProcessResult,
+): void {
+  if (!report) return;
+  const stats = result.sourceStats[sourceId];
+  report({
+    sourceId,
+    stage,
+    processed,
+    accepted: stats?.accepted ?? 0,
+    rejected: stats?.rejected ?? 0,
+  });
 }
 
 async function writeJsonl(

@@ -49,7 +49,13 @@ if (command === "fetch") {
 if (command === "process") {
   const config = option("--config", "config/sources.json");
   const out = option("--out", "data/work/latest");
-  const result = await processSources(config);
+  const result = await processSources(config, (progress) => {
+    console.log(
+      `[${progress.sourceId}] ${progress.stage.toLowerCase()} ` +
+        `${progress.processed} rows; ${progress.accepted} accepted, ` +
+        `${progress.rejected} rejected`,
+    );
+  });
   await writeBundle(result, out);
   console.log(`Wrote ${result.catalogue.length} accepted records, ${result.rejections.length} rejections, and ${result.duplicates.length} duplicate-review clusters to ${out}.`);
   process.exit(0);
