@@ -42,6 +42,14 @@ async function reviewedBundle(directory: string): Promise<void> {
           "catalogue.jsonl": { sha256: digest(catalogue), bytes: Buffer.byteLength(catalogue) },
         },
         summary: { duplicateClusters: 0 },
+        sourceRegistry: [
+          {
+            id: "pleiades",
+            kind: "PLEIADES_JSON",
+            dataset: "Pleiades",
+            license: "CC-BY-4.0",
+          },
+        ],
       },
       null,
       2,

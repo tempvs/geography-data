@@ -21,6 +21,20 @@
     "count": 6,
     "duplicateClusters": 0
   },
+  "sourceRegistry": [
+    {
+      "id": "pleiades-curated",
+      "kind": "PLEIADES_JSON",
+      "dataset": "Pleiades",
+      "license": "CC-BY-3.0"
+    },
+    {
+      "id": "geonames-cities5000",
+      "kind": "GEONAMES_TSV",
+      "dataset": "GeoNames cities5000",
+      "license": "CC-BY-4.0"
+    }
+  ],
   "deterministicInputs": true,
   "note": "Curated development pilot: Rome, Mainz, Regensburg/Castra Regina, Dura-Europos, Krefeld/Gelduba, and King of Prussia, PA, USA."
 }

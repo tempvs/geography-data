@@ -10,11 +10,20 @@ import {
 import { readCatalogue } from "./catalogue.js";
 
 type ManifestFile = { sha256?: string; bytes?: number };
+type SourceRegistryEntry = {
+  id?: string;
+  kind?: string;
+  dataset?: string;
+  license?: string;
+  url?: string;
+  archiveEntry?: string;
+};
 type BundleManifest = {
   artifactId?: string;
   transformVersion?: number;
   files?: Record<string, ManifestFile>;
   summary?: { duplicateClusters?: number };
+  sourceRegistry?: SourceRegistryEntry[];
 };
 
 type ReleaseDescriptor = {
@@ -53,6 +62,20 @@ export async function verifyReviewedBundle(
   const listed = manifest.files ?? {};
   if (!listed["catalogue.jsonl"]?.sha256)
     throw new Error("Bundle manifest has no catalogue.jsonl checksum.");
+  if (!manifest.sourceRegistry?.length)
+    throw new Error("Bundle manifest has no source registry.");
+  const sourceIds = new Set<string>();
+  for (const source of manifest.sourceRegistry) {
+    if (
+      !source.id?.trim() ||
+      !source.kind?.trim() ||
+      !source.dataset?.trim() ||
+      !source.license?.trim() ||
+      sourceIds.has(source.id)
+    )
+      throw new Error("Bundle source registry has incomplete or duplicate provenance.");
+    sourceIds.add(source.id);
+  }
 
   const files: VerifiedBundle["files"] = {};
   for (const [relativePath, metadata] of Object.entries(listed)) {
