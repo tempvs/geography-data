@@ -8,4 +8,6 @@ data/releases/
 !data/releases/dev-pilot-v1/
 !data/releases/dev-pilot-v1/catalogue.jsonl
 !data/releases/dev-pilot-v1/manifest.json
+!data/releases/dev-pilot-v1/summary.json
+!data/releases/dev-pilot-v1/duplicates.json
 *.log

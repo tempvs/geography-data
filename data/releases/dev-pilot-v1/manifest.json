@@ -7,6 +7,14 @@
     "catalogue.jsonl": {
       "sha256": "78b5b33efbbc8a99d5e4ecac3ac8e512ebca5afaf21119d85d6a6badb22d6de8",
       "bytes": 2242
+    },
+    "summary.json": {
+      "sha256": "fb885784101b4368b6684fe88c6903ef7c2dd1c4b0547044141039a22a97f0f8",
+      "bytes": 131
+    },
+    "duplicates.json": {
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
     }
   },
   "summary": {

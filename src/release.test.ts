@@ -133,3 +133,9 @@ test("rejects a bundle with unresolved duplicate clusters", async () => {
     await rm(temporary, { recursive: true, force: true });
   }
 });
+
+test("keeps the checked-in development pilot publishable", async () => {
+  const bundle = await verifyReviewedBundle("data/releases/dev-pilot-v1");
+  assert.equal(bundle.artifactId, "geo-v1-78b5b33efbbc8a99d5e4ecac");
+  assert.equal(bundle.files["catalogue.jsonl"]?.bytes, 2242);
+});
