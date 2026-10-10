@@ -73,6 +73,13 @@ npm run geo -- validate data/work/first-pass/catalogue.jsonl
 npm run geo -- inspect data/work/first-pass/catalogue.jsonl geonames-cities5000:3169070
 ```
 
+`process` is deliberately a local streaming operation. The comprehensive
+Pleiades JSON source can take several minutes on a normal workstation; it now
+prints a start/progress/completion line for every 10,000 input records. Its
+downloaded raw input remains under `data/raw/` and is ignored by Git, so an
+interrupted transform can be safely run again without downloading the source
+again.
+
 ### Resolve duplicate-review clusters before import
 
 `process` deliberately produces a **first-pass** bundle. It is not importable
