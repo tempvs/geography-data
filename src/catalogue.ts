@@ -10,11 +10,7 @@ export type PlaceCandidate = {
   longitude: number;
   featureType: string;
   confidence?:
-    | "IMPORTED"
-    | "CURATED"
-    | "USER_CONTRIBUTED"
-    | "UNVERIFIED"
-    | "DISPUTED";
+    "IMPORTED" | "CURATED" | "USER_CONTRIBUTED" | "UNVERIFIED" | "DISPUTED";
   /** Optional canonical parent stable key. It is intentionally not a fixed
    * country/region column: hierarchy depth varies by place and period. */
   parentStableId?: string;
@@ -26,6 +22,9 @@ export type PlaceCandidate = {
     language?: string;
     validFrom?: number;
     validTo?: number;
+    confidence?:
+      "IMPORTED" | "CURATED" | "USER_CONTRIBUTED" | "UNVERIFIED" | "DISPUTED";
+    sources?: Array<{ dataset: string; externalId: string; license: string }>;
   }>;
   periods?: string[];
   selectionReasons: string[];
@@ -111,7 +110,9 @@ function assertCandidate(
   if (
     item.periods !== undefined &&
     (!Array.isArray(item.periods) ||
-      item.periods.some((period) => typeof period !== "string" || !period.trim()))
+      item.periods.some(
+        (period) => typeof period !== "string" || !period.trim(),
+      ))
   ) {
     throw new Error(`Line ${line} has an invalid period.`);
   }
@@ -129,16 +130,41 @@ function assertCandidate(
         (name.validTo !== undefined && !Number.isSafeInteger(name.validTo)) ||
         (name.validFrom !== undefined &&
           name.validTo !== undefined &&
-          name.validFrom > name.validTo),
+          name.validFrom > name.validTo) ||
+        (name.confidence !== undefined &&
+          ![
+            "IMPORTED",
+            "CURATED",
+            "USER_CONTRIBUTED",
+            "UNVERIFIED",
+            "DISPUTED",
+          ].includes(name.confidence)) ||
+        (name.sources !== undefined &&
+          (!Array.isArray(name.sources) ||
+            name.sources.length === 0 ||
+            name.sources.some(
+              (source) =>
+                !source ||
+                typeof source.dataset !== "string" ||
+                !source.dataset.trim() ||
+                typeof source.externalId !== "string" ||
+                !source.externalId.trim() ||
+                typeof source.license !== "string" ||
+                !source.license.trim(),
+            ))),
     )
   ) {
     throw new Error(`Line ${line} has an invalid historical name.`);
   }
   if (
     item.confidence !== undefined &&
-    !["IMPORTED", "CURATED", "USER_CONTRIBUTED", "UNVERIFIED", "DISPUTED"].includes(
-      item.confidence,
-    )
+    ![
+      "IMPORTED",
+      "CURATED",
+      "USER_CONTRIBUTED",
+      "UNVERIFIED",
+      "DISPUTED",
+    ].includes(item.confidence)
   ) {
     throw new Error(`Line ${line} has an invalid confidence.`);
   }

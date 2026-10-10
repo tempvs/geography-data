@@ -42,7 +42,10 @@ test("qualifies modern settlement display names while retaining short aliases", 
     modernSettlementDisplayName("King of Prussia", "US", "PA"),
     "King of Prussia, PA, USA",
   );
-  assert.equal(modernSettlementDisplayName("Unknown", undefined, undefined), "Unknown");
+  assert.equal(
+    modernSettlementDisplayName("Unknown", undefined, undefined),
+    "Unknown",
+  );
 });
 
 test("requires explicit review then preserves merged provenance in an importable bundle", async () => {
@@ -120,13 +123,39 @@ test("rejects malformed aliases, provenance, and historical-name metadata", asyn
     catalogue,
     `${JSON.stringify({ ...valid, names: { value: "Roma" } })}\n`,
   );
-  await assert.rejects(() => readCatalogue(catalogue), /invalid historical name/);
+  await assert.rejects(
+    () => readCatalogue(catalogue),
+    /invalid historical name/,
+  );
+
+  await writeFile(
+    catalogue,
+    `${JSON.stringify({
+      ...valid,
+      names: [
+        {
+          value: "Roma",
+          confidence: "CURATED",
+          sources: [
+            { dataset: "Manual", externalId: "rome-name", license: "" },
+          ],
+        },
+      ],
+    })}\n`,
+  );
+  await assert.rejects(
+    () => readCatalogue(catalogue),
+    /invalid historical name/,
+  );
 
   await writeFile(
     catalogue,
     `${JSON.stringify({ ...valid, parentStableId: "not valid parent" })}\n`,
   );
-  await assert.rejects(() => readCatalogue(catalogue), /invalid parent stable ID/);
+  await assert.rejects(
+    () => readCatalogue(catalogue),
+    /invalid parent stable ID/,
+  );
 });
 
 test("rejects duplicate stable keys and impossible parent hierarchies", async () => {
