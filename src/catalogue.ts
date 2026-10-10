@@ -60,6 +60,11 @@ export type CatalogueSummary = {
     resolvedWithinBundle: number;
     unresolvedParent: number;
   };
+  supplementalContainmentRelationships: {
+    declared: number;
+    resolvedWithinBundle: number;
+    unresolvedParent: number;
+  };
   featureTypes: Record<string, number>;
   selectionReasons: Record<string, number>;
   datasets: Record<string, number>;
@@ -336,6 +341,11 @@ export function summarizeCatalogue(items: PlaceCandidate[]): CatalogueSummary {
       resolvedWithinBundle: 0,
       unresolvedParent: 0,
     },
+    supplementalContainmentRelationships: {
+      declared: 0,
+      resolvedWithinBundle: 0,
+      unresolvedParent: 0,
+    },
     featureTypes: {},
     selectionReasons: {},
     datasets: {},
@@ -346,6 +356,12 @@ export function summarizeCatalogue(items: PlaceCandidate[]): CatalogueSummary {
       if (stableIds.has(item.parentStableId))
         summary.parentRelationships.resolvedWithinBundle += 1;
       else summary.parentRelationships.unresolvedParent += 1;
+    }
+    for (const relation of item.containmentRelations || []) {
+      summary.supplementalContainmentRelationships.declared += 1;
+      if (stableIds.has(relation.parentStableId))
+        summary.supplementalContainmentRelationships.resolvedWithinBundle += 1;
+      else summary.supplementalContainmentRelationships.unresolvedParent += 1;
     }
     summary.featureTypes[item.featureType] =
       (summary.featureTypes[item.featureType] || 0) + 1;

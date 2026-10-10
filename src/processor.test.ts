@@ -211,7 +211,23 @@ test("retains normalized parent relationships and reports unresolved parents", a
             },
           ],
         },
+        containmentRelations: [
+          {
+            parentStableId: "empire",
+            validFrom: -27,
+            validTo: 476,
+            confidence: "DISPUTED",
+            sources: [
+              {
+                dataset: "Roman history fixture",
+                externalId: "rome-empire",
+                license: "CC0",
+              },
+            ],
+          },
+        ],
       }),
+      candidate({ stableId: "empire", name: "Roman Empire" }),
       candidate({
         stableId: "orphan",
         name: "Far point",
@@ -263,6 +279,29 @@ test("retains normalized parent relationships and reports unresolved parents", a
     resolvedWithinBundle: 1,
     unresolvedParent: 1,
   });
+  assert.deepEqual(
+    result.catalogue.find((item) => item.stableId === "curated:rome")
+      ?.containmentRelations,
+    [
+      {
+        parentStableId: "curated:empire",
+        validFrom: -27,
+        validTo: 476,
+        confidence: "DISPUTED",
+        sources: [
+          {
+            dataset: "Roman history fixture",
+            externalId: "rome-empire",
+            license: "CC0",
+          },
+        ],
+      },
+    ],
+  );
+  assert.deepEqual(
+    summarizeCatalogue(result.catalogue).supplementalContainmentRelationships,
+    { declared: 1, resolvedWithinBundle: 1, unresolvedParent: 0 },
+  );
 });
 
 function candidate(overrides: Record<string, unknown>) {
