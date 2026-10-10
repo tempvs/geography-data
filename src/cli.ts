@@ -1,6 +1,7 @@
 import { readCatalogue, summarizeCatalogue } from "./catalogue.js";
 import { curateBundle, initializeDuplicateReview } from "./curation.js";
 import { fetchSource, processSources, writeBundle } from "./processor.js";
+import { fetchReviewedBundle, publishReviewedBundle } from "./release.js";
 
 const [command, ...arguments_] = process.argv.slice(2);
 const path = arguments_[0];
@@ -14,6 +15,8 @@ if (!command || command === "help" || command === "--help") {
   geo process [--config config/sources.json] [--out data/work/<release>]
   geo review:init <first-pass-bundle> [--out data/work/review-decisions.json]
   geo curate <first-pass-bundle> --decisions <review-decisions.json> --out data/work/<reviewed-release>
+  geo publish --bundle <reviewed-bundle> --bucket <artifact-bucket> [--prefix tempvs/geography] [--apply]
+  geo release:fetch <artifact-id> --bucket <artifact-bucket> --out <new-directory> [--prefix tempvs/geography]
 
 fetch downloads only explicitly configured data. process never downloads data.`);
   process.exit(0);
@@ -62,6 +65,47 @@ if (command === "curate") {
   const out = option("--out", "data/work/reviewed-release");
   const result = await curateBundle(path, decisions, out);
   console.log(`Wrote reviewed release with ${result.catalogue.length} canonical places to ${out}.`);
+  process.exit(0);
+}
+
+if (command === "publish") {
+  const bundle = option("--bundle", "");
+  const bucket = option("--bucket", "");
+  if (!bundle || !bucket)
+    throw new Error("publish requires --bundle <reviewed-bundle> and --bucket <artifact-bucket>.");
+  console.log(
+    JSON.stringify(
+      await publishReviewedBundle({
+        directory: bundle,
+        bucket,
+        prefix: option("--prefix", "tempvs/geography"),
+        apply: arguments_.includes("--apply"),
+      }),
+      null,
+      2,
+    ),
+  );
+  process.exit(0);
+}
+
+if (command === "release:fetch") {
+  if (!path) throw new Error("release:fetch requires an immutable artifact ID.");
+  const bucket = option("--bucket", "");
+  const out = option("--out", "");
+  if (!bucket || !out)
+    throw new Error("release:fetch requires --bucket <artifact-bucket> and --out <new-directory>.");
+  console.log(
+    JSON.stringify(
+      await fetchReviewedBundle({
+        artifactId: path,
+        bucket,
+        outDirectory: out,
+        prefix: option("--prefix", "tempvs/geography"),
+      }),
+      null,
+      2,
+    ),
+  );
   process.exit(0);
 }
 

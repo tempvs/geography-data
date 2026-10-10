@@ -1,5 +1,7 @@
 {
   "version": 1,
+  "artifactId": "geo-v1-78b5b33efbbc8a99d5e4ecac",
+  "transformVersion": 1,
   "createdAt": "2026-10-07T00:00:00.000Z",
   "files": {
     "catalogue.jsonl": {

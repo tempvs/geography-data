@@ -89,6 +89,24 @@ npm run geo -- curate data/work/first-pass --decisions data/work/first-pass-revi
 npm run geo -- validate data/work/reviewed-v1/catalogue.jsonl
 ```
 
+### Promote a reviewed immutable release
+
+Publishing is deliberately an administrator-operated step, not a normal CI
+job. It uploads only a reviewed bundle (`duplicateClusters: 0`) under its
+content-addressed artifact ID, refuses to overwrite different bytes, and first
+runs as a no-write preview. It is useful when the exact same reviewed artefact
+must move from development to another environment.
+
+```powershell
+npm run geo -- publish --bundle data/work/reviewed-v1 --bucket <artifact-bucket>
+npm run geo -- publish --bundle data/work/reviewed-v1 --bucket <artifact-bucket> --apply
+npm run geo -- release:fetch geo-v1-<artifact-hash> --bucket <artifact-bucket> --out data/work/fetched-release
+```
+
+The download must target a new directory and verifies every checksum before it
+becomes importable. The Map service's `import:bundle` remains a separate,
+explicit preview/apply operation.
+
 `KEEP_SEPARATE` is deliberately not importable. It documents that the reviewer
 does not want to merge a cluster, but it keeps the bundle blocked until the
 records are re-modelled or excluded in a future, separately reviewed release.
