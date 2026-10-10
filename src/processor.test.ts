@@ -132,6 +132,18 @@ test("rejects malformed aliases, provenance, and historical-name metadata", asyn
     catalogue,
     `${JSON.stringify({
       ...valid,
+      parentRelation: { validFrom: 200 },
+    })}\n`,
+  );
+  await assert.rejects(
+    () => readCatalogue(catalogue),
+    /invalid parent relationship/,
+  );
+
+  await writeFile(
+    catalogue,
+    `${JSON.stringify({
+      ...valid,
       names: [
         {
           value: "Roma",
@@ -188,6 +200,17 @@ test("retains normalized parent relationships and reports unresolved parents", a
         stableId: "rome",
         name: "Rome",
         parentStableId: "region",
+        parentRelation: {
+          validFrom: -753,
+          confidence: "CURATED",
+          sources: [
+            {
+              dataset: "Roman history fixture",
+              externalId: "latium-rome",
+              license: "CC0",
+            },
+          ],
+        },
       }),
       candidate({
         stableId: "orphan",
@@ -219,6 +242,21 @@ test("retains normalized parent relationships and reports unresolved parents", a
     result.catalogue.find((item) => item.stableId === "curated:rome")
       ?.parentStableId,
     "curated:region",
+  );
+  assert.deepEqual(
+    result.catalogue.find((item) => item.stableId === "curated:rome")
+      ?.parentRelation,
+    {
+      validFrom: -753,
+      confidence: "CURATED",
+      sources: [
+        {
+          dataset: "Roman history fixture",
+          externalId: "latium-rome",
+          license: "CC0",
+        },
+      ],
+    },
   );
   assert.deepEqual(summarizeCatalogue(result.catalogue).parentRelationships, {
     declared: 2,

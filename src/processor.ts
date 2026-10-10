@@ -75,6 +75,37 @@ function numericValue(value: unknown): number | undefined {
   return Number.isFinite(valueAsNumber) ? valueAsNumber : undefined;
 }
 
+function confidenceValue(
+  value: unknown,
+): PlaceCandidate["confidence"] | undefined {
+  return [
+    "IMPORTED",
+    "CURATED",
+    "USER_CONTRIBUTED",
+    "UNVERIFIED",
+    "DISPUTED",
+  ].includes(value as string)
+    ? (value as PlaceCandidate["confidence"])
+    : undefined;
+}
+
+function provenanceValues(
+  value: unknown,
+): PlaceCandidate["sources"] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const sources = value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const source = item as Record<string, unknown>;
+    const dataset = stringValue(source.dataset);
+    const externalId = stringValue(source.externalId);
+    const license = stringValue(source.license);
+    return dataset && externalId && license
+      ? [{ dataset, externalId, license }]
+      : [];
+  });
+  return sources.length ? sources : undefined;
+}
+
 function validPoint(
   latitude: number | undefined,
   longitude: number | undefined,
@@ -108,7 +139,18 @@ function cleanHistoricalNames(
       value.validTo !== undefined && value.validTo >= openEndedAtOrAfterYear
         ? undefined
         : value.validTo;
-    const key = `${name}\u0000${value.language || ""}\u0000${value.validFrom ?? ""}\u0000${validTo ?? ""}`;
+    const key = JSON.stringify([
+      name,
+      value.language ?? null,
+      value.validFrom ?? null,
+      validTo ?? null,
+      value.confidence ?? null,
+      value.sources?.map((source) => [
+        source.dataset,
+        source.externalId,
+        source.license,
+      ]) ?? null,
+    ]);
     if (seen.has(key)) return [];
     seen.add(key);
     const nameWithoutEnd = { ...value };
@@ -139,6 +181,7 @@ function candidate(
   periods: string[] = [],
   names: NonNullable<PlaceCandidate["names"]> = [],
   parentStableId?: string,
+  parentRelation?: PlaceCandidate["parentRelation"],
 ): PlaceCandidate {
   return {
     stableId: `${source.id}:${externalId}`,
@@ -149,6 +192,20 @@ function candidate(
     longitude,
     featureType,
     ...(parentStableId ? { parentStableId } : {}),
+    ...(parentStableId && parentRelation
+      ? {
+          parentRelation: {
+            ...parentRelation,
+            ...(parentRelation.sources?.length
+              ? {
+                  sources: parentRelation.sources.map((value) => ({
+                    ...value,
+                  })),
+                }
+              : { sources: [sourceOf(source, externalId)] }),
+          },
+        }
+      : {}),
     periods: [...new Set(periods)],
     selectionReasons: [...new Set(selectionReasons)],
     sources: [sourceOf(source, externalId)],
@@ -327,9 +384,7 @@ export function modernSettlementDisplayName(
 
 function countryDisplayName(code: string): string | undefined {
   try {
-    const display = new Intl.DisplayNames(["en"], { type: "region" }).of(
-      code,
-    );
+    const display = new Intl.DisplayNames(["en"], { type: "region" }).of(code);
     if (!display || display === code) return undefined;
     // Product copy uses USA rather than the longer formal country name.
     return code === "US" ? "USA" : display;
@@ -538,12 +593,16 @@ async function processNormalized(
           const language = stringValue(entry.language);
           const validFrom = historicalYear(entry.validFrom);
           const validTo = historicalYear(entry.validTo);
+          const confidence = confidenceValue(entry.confidence);
+          const sources = provenanceValues(entry.sources);
           return [
             {
               value,
               ...(language ? { language } : {}),
               ...(validFrom !== undefined ? { validFrom } : {}),
               ...(validTo !== undefined ? { validTo } : {}),
+              ...(confidence ? { confidence } : {}),
+              ...(sources ? { sources } : {}),
             },
           ];
         })
@@ -559,6 +618,23 @@ async function processNormalized(
         ? rawParentStableId
         : `${source.id}:${rawParentStableId}`
       : undefined;
+    const rawParentRelation = raw.parentRelation;
+    const parentRelation =
+      rawParentRelation && typeof rawParentRelation === "object"
+        ? (() => {
+            const relation = rawParentRelation as Record<string, unknown>;
+            const validFrom = historicalYear(relation.validFrom);
+            const validTo = historicalYear(relation.validTo);
+            const confidence = confidenceValue(relation.confidence);
+            const sources = provenanceValues(relation.sources);
+            return {
+              ...(validFrom !== undefined ? { validFrom } : {}),
+              ...(validTo !== undefined ? { validTo } : {}),
+              ...(confidence ? { confidence } : {}),
+              ...(sources ? { sources } : {}),
+            };
+          })()
+        : undefined;
     result.candidates.push(
       candidate(
         source,
@@ -572,6 +648,7 @@ async function processNormalized(
         periods,
         names,
         parentStableId,
+        parentRelation,
       ),
     );
     result.sourceStats[source.id].accepted += 1;

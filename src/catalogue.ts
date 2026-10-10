@@ -14,6 +14,14 @@ export type PlaceCandidate = {
   /** Optional canonical parent stable key. It is intentionally not a fixed
    * country/region column: hierarchy depth varies by place and period. */
   parentStableId?: string;
+  /** Evidence and historical validity for the primary parent relationship. */
+  parentRelation?: {
+    validFrom?: number;
+    validTo?: number;
+    confidence?:
+      "IMPORTED" | "CURATED" | "USER_CONTRIBUTED" | "UNVERIFIED" | "DISPUTED";
+    sources?: Array<{ dataset: string; externalId: string; license: string }>;
+  };
   aliases?: string[];
   /** Curated dated names supplement plain aliases where a source supports a
    * defensible historical range. Years use astronomical numbering. */
@@ -167,6 +175,40 @@ function assertCandidate(
     ].includes(item.confidence)
   ) {
     throw new Error(`Line ${line} has an invalid confidence.`);
+  }
+  if (
+    item.parentRelation !== undefined &&
+    (!item.parentStableId ||
+      (item.parentRelation.validFrom !== undefined &&
+        !Number.isSafeInteger(item.parentRelation.validFrom)) ||
+      (item.parentRelation.validTo !== undefined &&
+        !Number.isSafeInteger(item.parentRelation.validTo)) ||
+      (item.parentRelation.validFrom !== undefined &&
+        item.parentRelation.validTo !== undefined &&
+        item.parentRelation.validFrom > item.parentRelation.validTo) ||
+      (item.parentRelation.confidence !== undefined &&
+        ![
+          "IMPORTED",
+          "CURATED",
+          "USER_CONTRIBUTED",
+          "UNVERIFIED",
+          "DISPUTED",
+        ].includes(item.parentRelation.confidence)) ||
+      (item.parentRelation.sources !== undefined &&
+        (!Array.isArray(item.parentRelation.sources) ||
+          item.parentRelation.sources.length === 0 ||
+          item.parentRelation.sources.some(
+            (source) =>
+              !source ||
+              typeof source.dataset !== "string" ||
+              !source.dataset.trim() ||
+              typeof source.externalId !== "string" ||
+              !source.externalId.trim() ||
+              typeof source.license !== "string" ||
+              !source.license.trim(),
+          ))))
+  ) {
+    throw new Error(`Line ${line} has an invalid parent relationship.`);
   }
 }
 
