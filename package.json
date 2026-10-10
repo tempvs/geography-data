@@ -7,7 +7,10 @@
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test dist/*.test.js",
     "check": "npm run test && node dist/cli.js validate data/samples/catalogue.sample.jsonl && node dist/cli.js summary data/samples/catalogue.sample.jsonl",
-    "geo": "npm run build && node dist/cli.js"
+    "geo": "npm run build && node dist/cli.js",
+    "dataset:publish": "npm run geo -- publish",
+    "dataset:fetch": "npm run geo -- release:fetch",
+    "dataset:verify": "npm run geo -- release:verify"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.0.0",

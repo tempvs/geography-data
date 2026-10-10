@@ -103,6 +103,11 @@ npm run geo -- publish --bundle data/work/reviewed-v1 --bucket <artifact-bucket>
 npm run geo -- release:fetch geo-v1-<artifact-hash> --bucket <artifact-bucket> --out data/work/fetched-release
 ```
 
+The equivalent explicit lifecycle aliases are `npm run dataset:publish -- ...`,
+`npm run dataset:fetch -- ...`, and `npm run dataset:verify -- ...`. They all
+preserve the same preview-first behavior; none fetches a third-party catalogue
+or mutates an environment implicitly.
+
 The download must target a new directory and verifies every checksum before it
 becomes importable. The Map service's `import:bundle` remains a separate,
 explicit preview/apply operation.
