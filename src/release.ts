@@ -7,6 +7,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { readCatalogue } from "./catalogue.js";
 
 type ManifestFile = { sha256?: string; bytes?: number };
 type BundleManifest = {
@@ -67,6 +68,9 @@ export async function verifyReviewedBundle(
     const content = required === "manifest.json" ? manifestContent : await readFile(join(directory, required));
     files[required] = { sha256: digest(content), bytes: content.byteLength, content };
   }
+  // Hashes prove byte identity; the catalogue parser separately proves that a
+  // release still has coordinates, labels, provenance, and licence metadata.
+  await readCatalogue(join(directory, "catalogue.jsonl"));
   return { artifactId: manifest.artifactId, manifest, files };
 }
 

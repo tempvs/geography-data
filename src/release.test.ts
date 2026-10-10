@@ -19,6 +19,13 @@ async function reviewedBundle(directory: string): Promise<void> {
   const catalogue = `${JSON.stringify({
     stableId: "pleiades:423025",
     name: "Rome",
+    latitude: 41.8933,
+    longitude: 12.4829,
+    featureType: "HISTORIC_SETTLEMENT",
+    selectionReasons: ["CURATED_HISTORICAL_GAZETTEER"],
+    sources: [
+      { dataset: "Pleiades", externalId: "423025", license: "CC-BY-4.0" },
+    ],
   })}\n`;
   const summary = `${JSON.stringify({ count: 1, duplicateClusters: 0 })}\n`;
   const duplicates = "[]\n";
@@ -129,6 +136,35 @@ test("rejects a bundle with unresolved duplicate clusters", async () => {
     manifest.summary.duplicateClusters = 1;
     await writeFile(manifestPath, `${JSON.stringify(manifest)}\n`);
     await assert.rejects(() => verifyReviewedBundle(temporary), /unresolved duplicate clusters/);
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});
+
+test("rejects a checksummed catalogue that lacks required provenance", async () => {
+  const temporary = await mkdtemp(join(tmpdir(), "tempvs-geo-release-"));
+  try {
+    await reviewedBundle(temporary);
+    const cataloguePath = join(temporary, "catalogue.jsonl");
+    const invalidCatalogue = `${JSON.stringify({
+      stableId: "pleiades:423025",
+      name: "Rome",
+      latitude: 41.8933,
+      longitude: 12.4829,
+      featureType: "HISTORIC_SETTLEMENT",
+      selectionReasons: ["CURATED_HISTORICAL_GAZETTEER"],
+    })}\n`;
+    await writeFile(cataloguePath, invalidCatalogue);
+    const manifestPath = join(temporary, "manifest.json");
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as {
+      files: { "catalogue.jsonl": { sha256: string; bytes: number } };
+    };
+    manifest.files["catalogue.jsonl"] = {
+      sha256: digest(invalidCatalogue),
+      bytes: Buffer.byteLength(invalidCatalogue),
+    };
+    await writeFile(manifestPath, `${JSON.stringify(manifest)}\n`);
+    await assert.rejects(() => verifyReviewedBundle(temporary), /source provenance/);
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }
