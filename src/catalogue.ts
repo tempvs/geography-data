@@ -9,6 +9,12 @@ export type PlaceCandidate = {
   latitude: number;
   longitude: number;
   featureType: string;
+  confidence?:
+    | "IMPORTED"
+    | "CURATED"
+    | "USER_CONTRIBUTED"
+    | "UNVERIFIED"
+    | "DISPUTED";
   /** Optional canonical parent stable key. It is intentionally not a fixed
    * country/region column: hierarchy depth varies by place and period. */
   parentStableId?: string;
@@ -127,6 +133,14 @@ function assertCandidate(
     )
   ) {
     throw new Error(`Line ${line} has an invalid historical name.`);
+  }
+  if (
+    item.confidence !== undefined &&
+    !["IMPORTED", "CURATED", "USER_CONTRIBUTED", "UNVERIFIED", "DISPUTED"].includes(
+      item.confidence,
+    )
+  ) {
+    throw new Error(`Line ${line} has an invalid confidence.`);
   }
 }
 
