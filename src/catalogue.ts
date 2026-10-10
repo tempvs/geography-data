@@ -22,6 +22,20 @@ export type PlaceCandidate = {
       "IMPORTED" | "CURATED" | "USER_CONTRIBUTED" | "UNVERIFIED" | "DISPUTED";
     sources?: Array<{ dataset: string; externalId: string; license: string }>;
   };
+  /** Supplemental historical or contested containment claims. The primary
+   * parent remains the deterministic navigation relationship. */
+  containmentRelations?: Array<{
+    parentStableId: string;
+    validFrom?: number;
+    validTo?: number;
+    confidence?:
+      | "IMPORTED"
+      | "CURATED"
+      | "USER_CONTRIBUTED"
+      | "UNVERIFIED"
+      | "DISPUTED";
+    sources?: Array<{ dataset: string; externalId: string; license: string }>;
+  }>;
   aliases?: string[];
   /** Curated dated names supplement plain aliases where a source supports a
    * defensible historical range. Years use astronomical numbering. */
@@ -210,6 +224,47 @@ function assertCandidate(
   ) {
     throw new Error(`Line ${line} has an invalid parent relationship.`);
   }
+  if (
+    item.containmentRelations !== undefined &&
+    (!Array.isArray(item.containmentRelations) ||
+      item.containmentRelations.some(
+        (relation) =>
+          !relation ||
+          typeof relation.parentStableId !== "string" ||
+          !relation.parentStableId.trim() ||
+          relation.parentStableId === item.stableId ||
+          (relation.validFrom !== undefined &&
+            !Number.isSafeInteger(relation.validFrom)) ||
+          (relation.validTo !== undefined &&
+            !Number.isSafeInteger(relation.validTo)) ||
+          (relation.validFrom !== undefined &&
+            relation.validTo !== undefined &&
+            relation.validFrom > relation.validTo) ||
+          (relation.confidence !== undefined &&
+            ![
+              "IMPORTED",
+              "CURATED",
+              "USER_CONTRIBUTED",
+              "UNVERIFIED",
+              "DISPUTED",
+            ].includes(relation.confidence)) ||
+          (relation.sources !== undefined &&
+            (!Array.isArray(relation.sources) ||
+              relation.sources.length === 0 ||
+              relation.sources.some(
+                (source) =>
+                  !source ||
+                  typeof source.dataset !== "string" ||
+                  !source.dataset.trim() ||
+                  typeof source.externalId !== "string" ||
+                  !source.externalId.trim() ||
+                  typeof source.license !== "string" ||
+                  !source.license.trim(),
+              ))),
+      ))
+  ) {
+    throw new Error(`Line ${line} has an invalid containment relationship.`);
+  }
 }
 
 export async function readCatalogue(path: string): Promise<PlaceCandidate[]> {
@@ -250,6 +305,8 @@ function validateCatalogueRelationships(
       throw new Error(`Duplicate stable ID: ${value.stableId}.`);
     if (value.parentStableId === value.stableId)
       throw new Error(`Place cannot be its own parent: ${value.stableId}.`);
+    if (value.containmentRelations?.some((item) => item.parentStableId === value.stableId))
+      throw new Error(`Place cannot contain itself: ${value.stableId}.`);
     byId.set(value.stableId, value);
   }
   const visiting = new Set<string>();
@@ -259,6 +316,8 @@ function validateCatalogueRelationships(
     if (visiting.has(stableId))
       throw new Error(`Parent hierarchy contains a cycle at: ${stableId}.`);
     visiting.add(stableId);
+    // Only the selected primary parent participates in the navigation tree.
+    // Supplemental historical/contested claims may legitimately form a graph.
     const parentId = byId.get(stableId)?.parentStableId;
     if (parentId && byId.has(parentId)) visit(parentId);
     visiting.delete(stableId);

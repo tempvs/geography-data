@@ -182,6 +182,7 @@ function candidate(
   names: NonNullable<PlaceCandidate["names"]> = [],
   parentStableId?: string,
   parentRelation?: PlaceCandidate["parentRelation"],
+  containmentRelations?: PlaceCandidate["containmentRelations"],
 ): PlaceCandidate {
   return {
     stableId: `${source.id}:${externalId}`,
@@ -204,6 +205,16 @@ function candidate(
                 }
               : { sources: [sourceOf(source, externalId)] }),
           },
+        }
+      : {}),
+    ...(containmentRelations?.length
+      ? {
+          containmentRelations: containmentRelations.map((relation) => ({
+            ...relation,
+            ...(relation.sources?.length
+              ? { sources: relation.sources.map((value) => ({ ...value })) }
+              : { sources: [sourceOf(source, externalId)] }),
+          })),
         }
       : {}),
     periods: [...new Set(periods)],
@@ -635,6 +646,29 @@ async function processNormalized(
             };
           })()
         : undefined;
+    const containmentRelations = Array.isArray(raw.containmentRelations)
+      ? raw.containmentRelations.flatMap((value) => {
+          if (!value || typeof value !== "object") return [];
+          const relation = value as Record<string, unknown>;
+          const rawStableId = stringValue(relation.parentStableId);
+          if (!rawStableId) return [];
+          const validFrom = historicalYear(relation.validFrom);
+          const validTo = historicalYear(relation.validTo);
+          const confidence = confidenceValue(relation.confidence);
+          const sources = provenanceValues(relation.sources);
+          return [
+            {
+              parentStableId: rawStableId.includes(":")
+                ? rawStableId
+                : `${source.id}:${rawStableId}`,
+              ...(validFrom !== undefined ? { validFrom } : {}),
+              ...(validTo !== undefined ? { validTo } : {}),
+              ...(confidence ? { confidence } : {}),
+              ...(sources ? { sources } : {}),
+            },
+          ];
+        })
+      : undefined;
     result.candidates.push(
       candidate(
         source,
@@ -649,6 +683,7 @@ async function processNormalized(
         names,
         parentStableId,
         parentRelation,
+        containmentRelations,
       ),
     );
     result.sourceStats[source.id].accepted += 1;
