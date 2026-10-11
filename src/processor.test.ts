@@ -48,6 +48,77 @@ test("qualifies modern settlement display names while retaining short aliases", 
   );
 });
 
+test("processes Natural Earth country reference points without persisting boundaries", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tempvs-natural-earth-"));
+  const geojson = join(root, "countries.geojson");
+  const config = join(root, "sources.json");
+  await writeFile(
+    geojson,
+    JSON.stringify({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: {
+            ADM0_A3: "ITA",
+            NAME_EN: "Italy",
+            LABEL_X: 12.5,
+            LABEL_Y: 42.8,
+          },
+          geometry: { type: "Polygon", coordinates: [[[6, 36], [19, 47], [6, 36]]] },
+        },
+        {
+          type: "Feature",
+          properties: { ADM0_A3: "FRA", NAME_EN: "France" },
+          geometry: { type: "Polygon", coordinates: [[[-5, 42], [8, 51], [-5, 42]]] },
+        },
+      ],
+    }),
+  );
+  await writeFile(
+    config,
+    JSON.stringify({
+      version: 1,
+      sources: [
+        {
+          id: "natural-earth-fixture",
+          kind: "NATURAL_EARTH_GEOJSON",
+          path: geojson,
+          dataset: "Natural Earth fixture",
+          license: "PUBLIC_DOMAIN",
+        },
+      ],
+    }),
+  );
+
+  const result = await processSources(config);
+  assert.deepEqual(
+    result.catalogue.map((item) => ({
+      stableId: item.stableId,
+      name: item.name,
+      featureType: item.featureType,
+      latitude: item.latitude,
+      longitude: item.longitude,
+    })),
+    [
+      {
+        stableId: "natural-earth-fixture:FRA",
+        name: "France",
+        featureType: "COUNTRY_OR_TERRITORY",
+        latitude: 46.5,
+        longitude: 1.5,
+      },
+      {
+        stableId: "natural-earth-fixture:ITA",
+        name: "Italy",
+        featureType: "COUNTRY_OR_TERRITORY",
+        latitude: 42.8,
+        longitude: 12.5,
+      },
+    ],
+  );
+});
+
 test("requires explicit review then preserves merged provenance in an importable bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "tempvs-geography-curation-"));
   const firstPass = join(root, "first-pass");

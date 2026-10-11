@@ -56,6 +56,7 @@ generated bundle goes under `data/work/` (also ignored by Git).
 
 ```powershell
 # Download only the configured public sources. Re-run with --force to refresh.
+npm run geo -- fetch natural-earth-countries
 npm run geo -- fetch geonames-cities5000
 npm run geo -- fetch pleiades-places
 
@@ -126,11 +127,14 @@ The curated manifest stores hashes of both the original bundle and review file;
 changing the source bundle requires a fresh review file.
 
 `config/sources.json` is the pinned source registry. The current first pass
-uses GeoNames `cities5000` for significant modern settlements/admin centres
-and Pleiades for curated ancient places. A full Wikidata dump is deliberately
-not fetched automatically: add a small, documented curated extract when it is
-ready. Each fetched file receives adjacent metadata recording URL, access time,
-licence, byte size, and SHA-256. Pleiades' release currently contains a nested
+uses public-domain Natural Earth countries/territories as a small reference
+hierarchy, GeoNames `cities5000` for significant modern settlements/admin
+centres, and Pleiades for curated ancient places. Natural Earth contributes
+label/reference points only: it never introduces boundaries into the
+point-only Map model. A full Wikidata dump is deliberately not fetched
+automatically: add a small, documented curated extract when it is ready. Each
+fetched file receives adjacent metadata recording URL, access time, licence,
+byte size, and SHA-256. Pleiades' release currently contains a nested
 `data/gis/places.csv`; the configured extractor records that exact entry.
 
 ## File format

@@ -14,7 +14,11 @@ import { streamArray } from "stream-json/streamers/stream-array.js";
 import { PlaceCandidate, summarizeCatalogue } from "./catalogue.js";
 
 export type SourceKind =
-  "GEONAMES_TSV" | "PLEIADES_CSV" | "PLEIADES_JSON" | "NORMALIZED_JSONL";
+  | "GEONAMES_TSV"
+  | "PLEIADES_CSV"
+  | "PLEIADES_JSON"
+  | "NATURAL_EARTH_GEOJSON"
+  | "NORMALIZED_JSONL";
 
 export type SourceDefinition = {
   id: string;
@@ -722,6 +726,111 @@ async function processNormalized(
   }
 }
 
+/** Natural Earth supplies a public-domain, point-only country/territory
+ * foundation. Prefer its intended label point, then fall back to a geometry
+ * bounding-box centre. No polygon or boundary data is persisted. */
+async function processNaturalEarth(
+  source: SourceDefinition,
+  result: ProcessResult,
+  report?: ProgressReporter,
+): Promise<void> {
+  const raw = JSON.parse(await readFile(projectPath(source.path), "utf8")) as {
+    features?: unknown;
+  };
+  if (!Array.isArray(raw.features)) {
+    result.rejections.push({
+      source: source.id,
+      externalId: null,
+      reason: "INVALID_SOURCE_FORMAT",
+      detail: "Natural Earth GeoJSON must contain a features array",
+    });
+    result.sourceStats[source.id].rejected += 1;
+    return;
+  }
+  let processed = 0;
+  for (const value of raw.features) {
+    processed += 1;
+    const feature = value as {
+      properties?: unknown;
+      geometry?: { coordinates?: unknown };
+    };
+    const properties =
+      feature.properties && typeof feature.properties === "object"
+        ? (feature.properties as Record<string, unknown>)
+        : {};
+    const externalId =
+      stringValue(properties.ADM0_A3) ??
+      stringValue(properties.ISO_A3) ??
+      stringValue(properties.SOV_A3);
+    const name =
+      stringValue(properties.NAME_EN) ??
+      stringValue(properties.ADMIN) ??
+      stringValue(properties.NAME);
+    const fallback = geometryCentre(feature.geometry?.coordinates);
+    const latitude = numericValue(properties.LABEL_Y) ?? fallback?.latitude;
+    const longitude = numericValue(properties.LABEL_X) ?? fallback?.longitude;
+    if (!externalId || !name || !validPoint(latitude, longitude)) {
+      result.rejections.push({
+        source: source.id,
+        externalId: externalId ?? null,
+        reason: "INVALID_REQUIRED_DATA",
+      });
+      result.sourceStats[source.id].rejected += 1;
+      continue;
+    }
+    const aliases = [
+      stringValue(properties.ADMIN),
+      stringValue(properties.NAME),
+      stringValue(properties.FORMAL_EN),
+      stringValue(properties.SOVEREIGNT),
+      stringValue(properties.BRK_NAME),
+    ].filter((alias): alias is string => Boolean(alias));
+    result.candidates.push(
+      candidate(
+        source,
+        externalId,
+        name,
+        latitude!,
+        longitude!,
+        "COUNTRY_OR_TERRITORY",
+        ["CANONICAL_GEOGRAPHIC_CONTEXT"],
+        aliases,
+        ["CONTEMPORARY"],
+      ),
+    );
+    result.sourceStats[source.id].accepted += 1;
+    if (processed % 10_000 === 0)
+      reportProgress(report, source.id, "PROGRESS", processed, result);
+  }
+}
+
+function geometryCentre(
+  coordinates: unknown,
+): { latitude: number; longitude: number } | undefined {
+  const points: Array<{ latitude: number; longitude: number }> = [];
+  const visit = (value: unknown): void => {
+    if (!Array.isArray(value)) return;
+    if (
+      value.length >= 2 &&
+      typeof value[0] === "number" &&
+      typeof value[1] === "number" &&
+      validPoint(value[1], value[0])
+    ) {
+      points.push({ longitude: value[0], latitude: value[1] });
+      return;
+    }
+    value.forEach(visit);
+  };
+  visit(coordinates);
+  if (!points.length) return undefined;
+  const latitudes = points.map((point) => point.latitude);
+  const longitudes = points.map((point) => point.longitude);
+  return {
+    latitude: (Math.min(...latitudes) + Math.max(...latitudes)) / 2,
+    longitude: (Math.min(...longitudes) + Math.max(...longitudes)) / 2,
+  };
+}
+
 function duplicateClusters(
   candidates: PlaceCandidate[],
 ): ProcessResult["duplicates"] {
@@ -789,6 +898,7 @@ export async function loadSourceConfig(
         "GEONAMES_TSV",
         "PLEIADES_CSV",
         "PLEIADES_JSON",
+        "NATURAL_EARTH_GEOJSON",
         "NORMALIZED_JSONL",
       ].includes(source.kind)
     ) {
@@ -829,6 +939,8 @@ export async function processSources(
     if (source.kind === "PLEIADES_CSV") await processPleiades(source, result, report);
     if (source.kind === "PLEIADES_JSON")
       await processPleiadesJson(source, result, report);
+    if (source.kind === "NATURAL_EARTH_GEOJSON")
+      await processNaturalEarth(source, result, report);
     if (source.kind === "NORMALIZED_JSONL")
       await processNormalized(source, result, report);
     const stats = result.sourceStats[source.id];

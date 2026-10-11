@@ -2,6 +2,14 @@
   "version": 1,
   "sources": [
     {
+      "id": "natural-earth-countries",
+      "kind": "NATURAL_EARTH_GEOJSON",
+      "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson",
+      "path": "data/raw/natural-earth/ne_110m_admin_0_countries.geojson",
+      "dataset": "Natural Earth 1:110m Admin 0 Countries",
+      "license": "PUBLIC_DOMAIN"
+    },
+    {
       "id": "geonames-cities5000",
       "kind": "GEONAMES_TSV",
       "url": "https://download.geonames.org/export/dump/cities5000.zip",
