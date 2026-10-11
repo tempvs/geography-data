@@ -134,7 +134,9 @@ label/reference points only: it never introduces boundaries into the
 point-only Map model. A full Wikidata dump is deliberately not fetched
 automatically: add a small, documented curated extract when it is ready. Each
 fetched file receives adjacent metadata recording URL, access time, licence,
-byte size, and SHA-256. Pleiades' release currently contains a nested
+byte size, and SHA-256. Network sources can pin that normalized-file digest;
+a mismatch is rejected before the local input is replaced, so a source update
+requires explicit review and repinning. Pleiades' release currently contains a nested
 `data/gis/places.csv`; the configured extractor records that exact entry.
 
 ## File format

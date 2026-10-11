@@ -7,7 +7,8 @@
       "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson",
       "path": "data/raw/natural-earth/ne_110m_admin_0_countries.geojson",
       "dataset": "Natural Earth 1:110m Admin 0 Countries",
-      "license": "PUBLIC_DOMAIN"
+      "license": "PUBLIC_DOMAIN",
+      "expectedSha256": "6866c877d39cba9c357620878839b336d569f8c662d3cfab4cb1dbe2d39c977f"
     },
     {
       "id": "geonames-cities5000",

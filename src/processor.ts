@@ -28,6 +28,10 @@ export type SourceDefinition = {
   license: string;
   url?: string;
   archiveEntry?: string;
+  /** Optional trusted digest of the normalized raw file. A source update must
+   * be reviewed and intentionally repinned rather than silently changing a
+   * reproducible catalogue build. */
+  expectedSha256?: string;
 };
 
 type SourceConfiguration = { version: number; sources: SourceDefinition[] };
@@ -904,6 +908,12 @@ export async function loadSourceConfig(
     ) {
       throw new Error(`Invalid source definition in ${configPath}`);
     }
+    if (
+      source.expectedSha256 !== undefined &&
+      (typeof source.expectedSha256 !== "string" ||
+        !/^[a-f0-9]{64}$/i.test(source.expectedSha256))
+    )
+      throw new Error(`Invalid expectedSha256 in ${configPath}`);
   }
   return raw;
 }
@@ -1052,6 +1062,9 @@ export async function writeBundle(
       license: source.license,
       ...(source.url ? { url: source.url } : {}),
       ...(source.archiveEntry ? { archiveEntry: source.archiveEntry } : {}),
+      ...(source.expectedSha256
+        ? { expectedSha256: source.expectedSha256 }
+        : {}),
     })),
     deterministicInputs: true,
     note: "Cross-source duplicate clusters are review hints and are never auto-merged.",
@@ -1088,6 +1101,7 @@ export async function fetchSource(
     response.body as unknown as NodeJS.ReadableStream,
     createWriteStream(archive),
   );
+  let contents: Buffer;
   if (source.archiveEntry) {
     const zip = new AdmZip(archive);
     const entry = zip.getEntry(source.archiveEntry);
@@ -1095,15 +1109,17 @@ export async function fetchSource(
       throw new Error(
         `${source.archiveEntry} is not present in downloaded ${sourceId} archive.`,
       );
-    await mkdir(dirname(destination), { recursive: true });
-    await writeFile(destination, entry.getData());
+    contents = entry.getData();
   } else {
-    await mkdir(dirname(destination), { recursive: true });
-    await pipeline(createReadStream(archive), createWriteStream(destination));
+    contents = await readFile(archive);
   }
-  const digest = createHash("sha256")
-    .update(await readFile(destination))
-    .digest("hex");
+  const digest = createHash("sha256").update(contents).digest("hex");
+  if (source.expectedSha256 && digest !== source.expectedSha256)
+    throw new Error(
+      `Downloaded ${sourceId} does not match pinned SHA-256 ${source.expectedSha256}; got ${digest}. Review and repin the source before processing it.`,
+    );
+  await mkdir(dirname(destination), { recursive: true });
+  await writeFile(destination, contents);
   const metadata = {
     sourceId,
     url: source.url,
