@@ -33,6 +33,12 @@
       "kind": "GEONAMES_TSV",
       "dataset": "GeoNames cities5000",
       "license": "CC-BY-4.0"
+    },
+    {
+      "id": "geonames-curated",
+      "kind": "NORMALIZED_JSONL",
+      "dataset": "GeoNames",
+      "license": "CC-BY-4.0"
     }
   ],
   "deterministicInputs": true,

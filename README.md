@@ -109,6 +109,7 @@ must move from development to another environment.
 npm run geo -- publish --bundle data/work/reviewed-v1 --bucket <artifact-bucket>
 npm run geo -- publish --bundle data/work/reviewed-v1 --bucket <artifact-bucket> --apply
 npm run geo -- release:fetch geo-v1-<artifact-hash> --bucket <artifact-bucket> --out data/work/fetched-release
+npm run geo -- release:layout data/work/fetched-release --out data/work/release-v2
 ```
 
 The equivalent explicit lifecycle aliases are `npm run dataset:publish -- ...`,
@@ -119,6 +120,35 @@ or mutates an environment implicitly.
 The download must target a new directory and verifies every checksum before it
 becomes importable. The Map service's `import:bundle` remains a separate,
 explicit preview/apply operation.
+
+### Environment import and promotion gate
+
+An immutable catalogue artifact is not itself an authorization to write an
+environment. The Map import command requires an explicit environment label and
+emits a machine-readable reconciliation report. Run the same verified artifact
+in development first, review the report, then import that **same artifact** in
+the target environment. Before production is accepted, compare the two reports:
+
+```powershell
+# Map repository: no-write inspection first, then the reviewed dev import.
+npm.cmd run import:bundle -- --bundle ..\geography-data\data\work\release-v2 --table <dev-map-table> --environment dev --report-out .\reports\dev-preview.json
+npm.cmd run import:bundle -- --bundle ..\geography-data\data\work\release-v2 --table <dev-map-table> --environment dev --mode CREATE_ONLY --apply --report-out .\reports\dev-completed.json
+
+# Preview the target, verify it against the completed dev report, then import
+# exactly the fetched artifact in production (never a new transform).
+npm.cmd run import:bundle -- --bundle ..\geography-data\data\work\release-v2 --table <prod-map-table> --environment prod --report-out .\reports\prod-preview.json
+npm.cmd run geo -- promotion:verify --dev-report .\reports\dev-completed.json --candidate-report .\reports\prod-preview.json
+npm.cmd run import:bundle -- --bundle ..\geography-data\data\work\release-v2 --table <prod-map-table> --environment prod --mode CREATE_ONLY --apply --baseline-report .\reports\dev-completed.json --report-out .\reports\prod-completed.json
+```
+
+The verifier rejects a different artifact ID, conflicts,
+or a difference in accepted/rejected records, explicit duplicate merges,
+unmatched parents, or retained/dropped aliases. It intentionally permits
+physical DynamoDB capacity and storage measurements to differ by environment.
+For production writes the Map command itself repeats the target preview from
+the supplied completed dev report before any write. Run the target import only through the protected manual `catalogue-import`
+workflow/role described in the Map repository; do not grant normal deploy or
+developer roles write access merely to seed the catalogue.
 
 `KEEP_SEPARATE` is deliberately not importable. It documents that the reviewer
 does not want to merge a cluster, but it keeps the bundle blocked until the
@@ -193,3 +223,10 @@ the exact import without re-fetching external data. Validate it with:
 npm.cmd run geo -- validate data/releases/dev-pilot-v1/catalogue.jsonl
 npm.cmd run geo -- release:verify data/releases/dev-pilot-v1
 ```
+
+`release:layout` materializes this layout from a reviewed bundle. It retains
+the checked `catalogue.jsonl` as the canonical Map import stream and writes
+deterministic gzip component chunks (`places`, `names`, `parents`,
+`period-relevance`, `provenance`) with a v2 content-addressed artifact ID.
+The default uncompressed chunk target is 20 MiB; adjust `--chunk-bytes` for a
+larger catalogue after measuring the resulting compressed size.

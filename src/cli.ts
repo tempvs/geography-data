@@ -6,6 +6,8 @@ import {
   publishReviewedBundle,
   verifyReviewedBundle,
 } from "./release.js";
+import { materializeReleaseLayout } from "./release-layout.js";
+import { verifyPromotionReports } from "./promotion.js";
 
 const [command, ...arguments_] = process.argv.slice(2);
 const path = arguments_[0];
@@ -22,6 +24,8 @@ if (!command || command === "help" || command === "--help") {
   geo publish --bundle <reviewed-bundle> --bucket <artifact-bucket> [--prefix tempvs/geography] [--apply]
   geo release:verify <reviewed-bundle>
   geo release:fetch <artifact-id> --bucket <artifact-bucket> --out <new-directory> [--prefix tempvs/geography]
+  geo release:layout <reviewed-bundle> --out <new-directory> [--chunk-bytes 20971520]
+  geo promotion:verify --dev-report <completed-dev-report.json> --candidate-report <completed-target-report.json>
 
 fetch downloads only explicitly configured data. process never downloads data.`);
   process.exit(0);
@@ -130,6 +134,43 @@ if (command === "release:fetch") {
         outDirectory: out,
         prefix: option("--prefix", "tempvs/geography"),
       }),
+      null,
+      2,
+    ),
+  );
+  process.exit(0);
+}
+
+if (command === "release:layout") {
+  if (!path) throw new Error("release:layout requires a reviewed bundle directory.");
+  const out = option("--out", "");
+  if (!out) throw new Error("release:layout requires --out <new-directory>.");
+  const chunkBytesText = option("--chunk-bytes", String(20 * 1024 * 1024));
+  const chunkBytes = Number(chunkBytesText);
+  console.log(
+    JSON.stringify(
+      await materializeReleaseLayout({
+        sourceDirectory: path,
+        outDirectory: out,
+        chunkBytes,
+      }),
+      null,
+      2,
+    ),
+  );
+  process.exit(0);
+}
+
+if (command === "promotion:verify") {
+  const developmentReportPath = option("--dev-report", "");
+  const candidateReportPath = option("--candidate-report", "");
+  if (!developmentReportPath || !candidateReportPath)
+    throw new Error(
+      "promotion:verify requires --dev-report <completed-dev-report.json> and --candidate-report <completed-target-report.json>.",
+    );
+  console.log(
+    JSON.stringify(
+      await verifyPromotionReports({ developmentReportPath, candidateReportPath }),
       null,
       2,
     ),

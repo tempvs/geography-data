@@ -93,7 +93,25 @@ export async function verifyReviewedBundle(
   }
   // Hashes prove byte identity; the catalogue parser separately proves that a
   // release still has coordinates, labels, provenance, and licence metadata.
-  await readCatalogue(join(directory, "catalogue.jsonl"));
+  const catalogue = await readCatalogue(join(directory, "catalogue.jsonl"));
+  const registeredSources = new Set(
+    manifest.sourceRegistry.map((source) => `${source.dataset}\u0000${source.license}`),
+  );
+  const assertRegistered = (dataset: string, license: string, stableId: string) => {
+    if (!registeredSources.has(`${dataset}\u0000${license}`))
+      throw new Error(
+        `Catalogue record ${stableId} references provenance not declared in the source registry: ${dataset} (${license}).`,
+      );
+  };
+  for (const record of catalogue) {
+    for (const source of record.sources) assertRegistered(source.dataset, source.license, record.stableId);
+    for (const name of record.names ?? [])
+      for (const source of name.sources ?? [])
+        assertRegistered(source.dataset, source.license, record.stableId);
+    for (const relation of [record.parentRelation, ...(record.containmentRelations ?? [])])
+      for (const source of relation?.sources ?? [])
+        assertRegistered(source.dataset, source.license, record.stableId);
+  }
   return { artifactId: manifest.artifactId, manifest, files };
 }
 

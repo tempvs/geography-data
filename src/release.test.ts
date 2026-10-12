@@ -11,6 +11,8 @@ import {
   publishReviewedBundle,
   verifyReviewedBundle,
 } from "./release.js";
+import { materializeReleaseLayout } from "./release-layout.js";
+import { verifyPromotionReports } from "./promotion.js";
 
 const digest = (content: Buffer | string) =>
   createHash("sha256").update(content).digest("hex");
@@ -178,8 +180,117 @@ test("rejects a checksummed catalogue that lacks required provenance", async () 
   }
 });
 
+test("rejects provenance that is absent from the pinned source registry", async () => {
+  const temporary = await mkdtemp(join(tmpdir(), "tempvs-geo-release-"));
+  try {
+    await reviewedBundle(temporary);
+    const cataloguePath = join(temporary, "catalogue.jsonl");
+    const content = await readFile(cataloguePath);
+    const manifestPath = join(temporary, "manifest.json");
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as {
+      files: { "catalogue.jsonl": { sha256: string; bytes: number } };
+      sourceRegistry: Array<{ id: string; kind: string; dataset: string; license: string }>;
+    };
+    manifest.sourceRegistry[0] = {
+      id: "different",
+      kind: "NORMALIZED_JSONL",
+      dataset: "Different catalogue",
+      license: "CC0-1.0",
+    };
+    manifest.files["catalogue.jsonl"] = {
+      sha256: digest(content),
+      bytes: content.byteLength,
+    };
+    await writeFile(manifestPath, `${JSON.stringify(manifest)}\n`);
+    await assert.rejects(() => verifyReviewedBundle(temporary), /not declared in the source registry/);
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});
+
 test("keeps the checked-in development pilot publishable", async () => {
   const bundle = await verifyReviewedBundle("data/releases/dev-pilot-v1");
   assert.equal(bundle.artifactId, "geo-v1-78b5b33efbbc8a99d5e4ecac");
   assert.equal(bundle.files["catalogue.jsonl"]?.bytes, 2242);
+});
+
+test("materializes deterministic component chunks without changing the canonical import stream", async () => {
+  const temporary = await mkdtemp(join(tmpdir(), "tempvs-geo-layout-"));
+  const source = join(temporary, "source");
+  const release = join(temporary, "release");
+  await mkdir(source);
+  try {
+    await reviewedBundle(source);
+    const result = await materializeReleaseLayout({
+      sourceDirectory: source,
+      outDirectory: release,
+      chunkBytes: 1024,
+    });
+    assert.match(result.artifactId, /^geo-v2-[a-f0-9]{24}$/);
+    assert.deepEqual(result.chunks, {
+      places: 1,
+      names: 1,
+      parents: 1,
+      "period-relevance": 1,
+      provenance: 1,
+    });
+    const verified = await verifyReviewedBundle(release);
+    assert.equal(verified.artifactId, result.artifactId);
+    assert.equal(
+      await readFile(join(release, "catalogue.jsonl"), "utf8"),
+      await readFile(join(source, "catalogue.jsonl"), "utf8"),
+    );
+    assert.ok(verified.files["places/part-00001.jsonl.gz"]);
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});
+
+test("requires equal semantic reconciliation before a production promotion", async () => {
+  const temporary = await mkdtemp(join(tmpdir(), "tempvs-geo-promotion-"));
+  const development = join(temporary, "development.json");
+  const candidate = join(temporary, "candidate.json");
+  const report = (environment: string) => ({
+    version: 1,
+    artifactId: "geo-v1-1234567890abcdef12345678",
+    target: { environment, tableName: `Map-${environment}` },
+    summary: {
+      mode: "CREATE_ONLY",
+      dryRun: false,
+      conflicts: 0,
+      reconciliation: {
+        accepted: 1,
+        rejected: 0,
+        merged: 0,
+        unmatchedParents: 0,
+        aliasesRetained: 1,
+        aliasesDropped: 0,
+        itemsWritten: 3,
+        bytesStored: 512,
+        consumedCapacityUnits: 2,
+      },
+    },
+  });
+  try {
+    await writeFile(development, `${JSON.stringify(report("dev"))}\n`);
+    await writeFile(candidate, `${JSON.stringify(report("prod"))}\n`);
+    const verified = await verifyPromotionReports({
+      developmentReportPath: development,
+      candidateReportPath: candidate,
+    });
+    assert.equal(verified.artifactId, "geo-v1-1234567890abcdef12345678");
+    const divergent = report("prod");
+    divergent.summary.reconciliation.aliasesDropped = 1;
+    await writeFile(candidate, `${JSON.stringify(divergent)}\n`);
+    await assert.rejects(
+      () =>
+        verifyPromotionReports({
+          developmentReportPath: development,
+          candidateReportPath: candidate,
+        }),
+      /aliasesDropped/,
+    );
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
 });
