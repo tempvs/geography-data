@@ -70,6 +70,99 @@ export type CatalogueSummary = {
   datasets: Record<string, number>;
 };
 
+/** Reproducible sizing evidence for a prospective Map import. It measures the
+ * canonical JSONL rather than a compressed download. */
+export type CatalogueImportEstimate = {
+  records: number;
+  canonicalBytes: number;
+  averageCanonicalBytes: number;
+  nameIndexItems: number;
+  estimatedDynamoItems: number;
+  estimatedDynamoBytes: number;
+  estimatedWriteRequestUnits: number;
+  assumptions: {
+    placeEnvelopeBytes: number;
+    nameIndexEnvelopeBytes: number;
+    dynamoAttributeAmplification: number;
+  };
+};
+
+const PLACE_ENVELOPE_BYTES = 180;
+const NAME_INDEX_ENVELOPE_BYTES = 150;
+const DYNAMO_ATTRIBUTE_AMPLIFICATION = 1.25;
+
+/** Estimate Map's compact place rows and suffix-name-index fan-out. The Map
+ * importer remains the source of measured capacity after a reviewed dev run. */
+export function estimateCatalogueImport(
+  catalogue: readonly PlaceCandidate[],
+): CatalogueImportEstimate {
+  const canonicalBytes = catalogue.reduce(
+    (total, record) => total + Buffer.byteLength(JSON.stringify(record)),
+    0,
+  );
+  const nameIndexItems = catalogue.reduce(
+    (total, record) => total + nameIndexCount(record),
+    0,
+  );
+  const placeBytes = canonicalBytes + catalogue.length * PLACE_ENVELOPE_BYTES;
+  const indexBytes = nameIndexItems * NAME_INDEX_ENVELOPE_BYTES;
+  const estimatedDynamoBytes = Math.ceil(
+    (placeBytes + indexBytes) * DYNAMO_ATTRIBUTE_AMPLIFICATION,
+  );
+  const estimatedWriteRequestUnits =
+    catalogue.reduce(
+      (total, record) =>
+        total +
+        Math.ceil(
+          (Buffer.byteLength(JSON.stringify(record)) + PLACE_ENVELOPE_BYTES) /
+            1024,
+        ),
+      0,
+    ) + Math.ceil((nameIndexItems * NAME_INDEX_ENVELOPE_BYTES) / 1024);
+  return {
+    records: catalogue.length,
+    canonicalBytes,
+    averageCanonicalBytes: catalogue.length
+      ? Math.ceil(canonicalBytes / catalogue.length)
+      : 0,
+    nameIndexItems,
+    estimatedDynamoItems: catalogue.length + nameIndexItems,
+    estimatedDynamoBytes,
+    estimatedWriteRequestUnits,
+    assumptions: {
+      placeEnvelopeBytes: PLACE_ENVELOPE_BYTES,
+      nameIndexEnvelopeBytes: NAME_INDEX_ENVELOPE_BYTES,
+      dynamoAttributeAmplification: DYNAMO_ATTRIBUTE_AMPLIFICATION,
+    },
+  };
+}
+
+function nameIndexCount(record: PlaceCandidate): number {
+  const names = new Set(
+    [
+      record.name,
+      ...(record.aliases ?? []),
+      ...(record.names ?? []).map((name) => name.value),
+    ]
+      .map(normalizeSearchText)
+      .filter((name) => name.length >= 2),
+  );
+  return [...names].reduce(
+    (total, name) => total + Math.max(0, name.length - 1),
+    0,
+  );
+}
+
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
 function assertCandidate(
   value: unknown,
   line: number,

@@ -46,6 +46,7 @@ npm install
 npm run check
 npm run geo -- validate data/samples/catalogue.sample.jsonl
 npm run geo -- summary data/samples/catalogue.sample.jsonl
+npm run geo -- estimate data/samples/catalogue.sample.jsonl
 ```
 
 ### Create a local first-pass dataset
@@ -71,6 +72,7 @@ Get-Content data/work/first-pass/summary.json
 Get-Content data/work/first-pass/duplicates.json
 Get-Content data/work/first-pass/rejections.jsonl
 npm run geo -- validate data/work/first-pass/catalogue.jsonl
+npm run geo -- estimate data/work/first-pass/catalogue.jsonl
 npm run geo -- inspect data/work/first-pass/catalogue.jsonl geonames-cities5000:3169070
 ```
 
@@ -80,6 +82,12 @@ prints a start/progress/completion line for every 10,000 input records. Its
 downloaded raw input remains under `data/raw/` and is ignored by Git, so an
 interrupted transform can be safely run again without downloading the source
 again.
+
+`estimate` measures the uncompressed reviewed catalogue and the suffix-name
+index fan-out that Map will create. It emits conservative DynamoDB item, byte,
+and write-unit estimates with stated assumptions. Record it with each proposed
+batch, then compare it with the Map import report's measured capacity and bytes
+after the development run before promoting or enlarging the batch.
 
 ### Resolve duplicate-review clusters before import
 

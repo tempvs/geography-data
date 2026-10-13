@@ -1,4 +1,8 @@
-import { readCatalogue, summarizeCatalogue } from "./catalogue.js";
+import {
+  estimateCatalogueImport,
+  readCatalogue,
+  summarizeCatalogue,
+} from "./catalogue.js";
 import { curateBundle, initializeDuplicateReview } from "./curation.js";
 import { fetchSource, processSources, writeBundle } from "./processor.js";
 import {
@@ -16,6 +20,7 @@ if (!command || command === "help" || command === "--help") {
   console.log(`Usage:
   geo validate <catalogue.json|catalogue.jsonl[.gz]>
   geo summary <catalogue.json|catalogue.jsonl[.gz]>
+  geo estimate <catalogue.json|catalogue.jsonl[.gz]>
   geo inspect <catalogue.json|catalogue.jsonl[.gz]> <stable-id>
   geo fetch <source-id|all> [--config config/sources.json] [--force]
   geo process [--config config/sources.json] [--out data/work/<release>]
@@ -191,6 +196,8 @@ if (command === "validate") {
   console.log(`Valid catalogue: ${catalogue.length} records.`);
 } else if (command === "summary") {
   console.log(JSON.stringify(summarizeCatalogue(catalogue), null, 2));
+} else if (command === "estimate") {
+  console.log(JSON.stringify(estimateCatalogueImport(catalogue), null, 2));
 } else if (command === "inspect") {
   const stableId = arguments_[1];
   if (!stableId) throw new Error("A stable ID is required for inspect.");

@@ -9,7 +9,33 @@ import {
   writeBundle,
 } from "./processor.js";
 import { curateBundle, initializeDuplicateReview } from "./curation.js";
-import { readCatalogue, summarizeCatalogue } from "./catalogue.js";
+import {
+  estimateCatalogueImport,
+  readCatalogue,
+  summarizeCatalogue,
+} from "./catalogue.js";
+
+test("estimates suffix-name index fan-out from canonical records", () => {
+  const estimate = estimateCatalogueImport([
+    {
+      stableId: "pleiades:423025",
+      name: "Rome, Italy",
+      aliases: ["Rome", "Roma"],
+      latitude: 41.8933,
+      longitude: 12.4829,
+      featureType: "HISTORIC_SETTLEMENT",
+      selectionReasons: ["CURATED_HISTORICAL_GAZETTEER"],
+      sources: [
+        { dataset: "Pleiades", externalId: "423025", license: "CC-BY-3.0" },
+      ],
+    },
+  ]);
+  assert.equal(estimate.records, 1);
+  assert.equal(estimate.nameIndexItems, 15); // "rome italy", "rome", "roma"
+  assert.equal(estimate.estimatedDynamoItems, 16);
+  assert.ok(estimate.estimatedDynamoBytes > estimate.canonicalBytes);
+  assert.ok(estimate.estimatedWriteRequestUnits > 0);
+});
 
 test("processes configured sources and leaves cross-source matches for review", async () => {
   const result = await processSources("config/test-sources.json");
