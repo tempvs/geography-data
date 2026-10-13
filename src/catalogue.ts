@@ -84,12 +84,20 @@ export type CatalogueImportEstimate = {
     placeEnvelopeBytes: number;
     nameIndexEnvelopeBytes: number;
     dynamoAttributeAmplification: number;
+    writeIndexAmplification: number;
+    importAuditWrites: number;
   };
 };
 
 const PLACE_ENVELOPE_BYTES = 180;
-const NAME_INDEX_ENVELOPE_BYTES = 150;
+/** Measured from the 177-place Natural Earth dev import; name index rows carry
+ * both DynamoDB attributes and the Map table's GSI keys. */
+const NAME_INDEX_ENVELOPE_BYTES = 216;
 const DYNAMO_ATTRIBUTE_AMPLIFICATION = 1.25;
+/** Each place/name write is projected into one Map-table GSI. The importer
+ * also persists a RUNNING and COMPLETED audit record for a mutation. */
+const WRITE_INDEX_AMPLIFICATION = 2;
+const IMPORT_AUDIT_WRITES = 2;
 
 /** Estimate Map's compact place rows and suffix-name-index fan-out. The Map
  * importer remains the source of measured capacity after a reviewed dev run. */
@@ -110,15 +118,8 @@ export function estimateCatalogueImport(
     (placeBytes + indexBytes) * DYNAMO_ATTRIBUTE_AMPLIFICATION,
   );
   const estimatedWriteRequestUnits =
-    catalogue.reduce(
-      (total, record) =>
-        total +
-        Math.ceil(
-          (Buffer.byteLength(JSON.stringify(record)) + PLACE_ENVELOPE_BYTES) /
-            1024,
-        ),
-      0,
-    ) + Math.ceil((nameIndexItems * NAME_INDEX_ENVELOPE_BYTES) / 1024);
+    (catalogue.length + nameIndexItems) * WRITE_INDEX_AMPLIFICATION +
+    IMPORT_AUDIT_WRITES;
   return {
     records: catalogue.length,
     canonicalBytes,
@@ -133,6 +134,8 @@ export function estimateCatalogueImport(
       placeEnvelopeBytes: PLACE_ENVELOPE_BYTES,
       nameIndexEnvelopeBytes: NAME_INDEX_ENVELOPE_BYTES,
       dynamoAttributeAmplification: DYNAMO_ATTRIBUTE_AMPLIFICATION,
+      writeIndexAmplification: WRITE_INDEX_AMPLIFICATION,
+      importAuditWrites: IMPORT_AUDIT_WRITES,
     },
   };
 }

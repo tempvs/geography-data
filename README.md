@@ -177,6 +177,21 @@ a mismatch is rejected before the local input is replaced, so a source update
 requires explicit review and repinning. Pleiades' release currently contains a nested
 `data/gis/places.csv`; the configured extractor records that exact entry.
 
+### First foundation batch
+
+`config/natural-earth-foundation.json` is the deliberately small,
+public-domain foundation input for country/territory reference points. It uses
+only label points from Natural Earth—never country polygons or modern borders
+in the Map model—and is kept independent from the much larger, still
+duplicate-blocked GeoNames/Pleiades candidate set.
+
+```powershell
+npm run geo -- process --config config/natural-earth-foundation.json --out data/work/natural-earth-foundation-v1
+npm run geo -- review:init data/work/natural-earth-foundation-v1 --out data/work/natural-earth-foundation-v1-review.json
+npm run geo -- curate data/work/natural-earth-foundation-v1 --decisions data/work/natural-earth-foundation-v1-review.json --out data/releases/natural-earth-foundation-v1
+npm run geo -- release:verify data/releases/natural-earth-foundation-v1
+```
+
 ## File format
 
 For small data, use a JSON array. For catalogue bundles, use newline-delimited

@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "artifactId": "geo-v1-06bea0ef8870b879393a32e8",
+  "transformVersion": 1,
+  "createdAt": "2026-10-13T11:08:23.578Z",
+  "files": {
+    "candidates.jsonl": {
+      "sha256": "b14361f2599cf93c63a7c80704e01420410e9c92948c83717e3285eafcca38ad",
+      "bytes": 64758
+    },
+    "catalogue.jsonl": {
+      "sha256": "5190db6e0e213dc52595eebfdfa0904451f2dcc639f916e4820bce3f8522c183",
+      "bytes": 64758
+    },
+    "rejections.jsonl": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  },
+  "summary": {
+    "count": 177,
+    "parentRelationships": {
+      "declared": 0,
+      "resolvedWithinBundle": 0,
+      "unresolvedParent": 0
+    },
+    "supplementalContainmentRelationships": {
+      "declared": 0,
+      "resolvedWithinBundle": 0,
+      "unresolvedParent": 0
+    },
+    "featureTypes": {
+      "COUNTRY_OR_TERRITORY": 177
+    },
+    "selectionReasons": {
+      "CANONICAL_GEOGRAPHIC_CONTEXT": 177
+    },
+    "datasets": {
+      "Natural Earth 1:110m Admin 0 Countries": 177
+    },
+    "rejections": 0,
+    "duplicateClusters": 0,
+    "sourceStats": {
+      "natural-earth-countries": {
+        "accepted": 177,
+        "rejected": 0
+      }
+    }
+  },
+  "sourceRegistry": [
+    {
+      "id": "natural-earth-countries",
+      "kind": "NATURAL_EARTH_GEOJSON",
+      "dataset": "Natural Earth 1:110m Admin 0 Countries",
+      "license": "PUBLIC_DOMAIN",
+      "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson",
+      "expectedSha256": "6866c877d39cba9c357620878839b336d569f8c662d3cfab4cb1dbe2d39c977f"
+    }
+  ],
+  "deterministicInputs": true,
+  "note": "Reviewed duplicate clusters were explicitly merged; this bundle is safe for the Map importer.",
+  "curatedFrom": {
+    "manifestSha256": "52f09d0316f935c95a0e2e9433dd620d84623f5a5d01672adeb858f6244d256a",
+    "reviewSha256": "a4e2226b96af1792184e1224ffa55e23a5bed24bddb7f19aa2874f1960e545e5",
+    "mergedClusters": 0
+  }
+}

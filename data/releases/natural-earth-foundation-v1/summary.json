@@ -1,0 +1,30 @@
+{
+  "count": 177,
+  "parentRelationships": {
+    "declared": 0,
+    "resolvedWithinBundle": 0,
+    "unresolvedParent": 0
+  },
+  "supplementalContainmentRelationships": {
+    "declared": 0,
+    "resolvedWithinBundle": 0,
+    "unresolvedParent": 0
+  },
+  "featureTypes": {
+    "COUNTRY_OR_TERRITORY": 177
+  },
+  "selectionReasons": {
+    "CANONICAL_GEOGRAPHIC_CONTEXT": 177
+  },
+  "datasets": {
+    "Natural Earth 1:110m Admin 0 Countries": 177
+  },
+  "rejections": 0,
+  "duplicateClusters": 0,
+  "sourceStats": {
+    "natural-earth-countries": {
+      "accepted": 177,
+      "rejected": 0
+    }
+  }
+}
