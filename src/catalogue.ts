@@ -3,6 +3,26 @@ import { createReadStream } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 
+/**
+ * Stable, explainable reasons a point is included in a Tempvs seed release.
+ * Releases reject other values so reports remain comparable and curation
+ * cannot silently become an opaque free-text ranking.
+ */
+export const selectionReasonValues = [
+  "CURATED",
+  "CURATED_HISTORICAL_GAZETTEER",
+  "CAPITAL_OR_ADMINISTRATIVE_CENTRE",
+  "ARCHAEOLOGICAL_OR_HISTORIC_SITE",
+  "MUSEUM_ARCHIVE_OR_REPOSITORY",
+  "MODERN_POPULATION_THRESHOLD",
+  "EXPLICIT_REGIONAL_CENTRE",
+  "DIRECT_TEMPVS_CONTENT_REFERENCE",
+  "REQUIRED_PARENT_HIERARCHY",
+  "REVIEWER_INCLUDE",
+] as const;
+
+const selectionReasonSet = new Set<string>(selectionReasonValues);
+
 export type PlaceCandidate = {
   stableId: string;
   name: string;
@@ -202,7 +222,8 @@ function assertCandidate(
     !Array.isArray(item.selectionReasons) ||
     item.selectionReasons.length === 0 ||
     item.selectionReasons.some(
-      (reason) => typeof reason !== "string" || !reason.trim(),
+      (reason) =>
+        typeof reason !== "string" || !selectionReasonSet.has(reason),
     )
   ) {
     throw new Error(`Line ${line} needs at least one selection reason.`);
