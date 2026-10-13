@@ -12,7 +12,20 @@ export type DuplicateCluster = {
   stableIds: string[];
   names: string[];
 };
-export type ReviewAction = "UNRESOLVED" | "MERGE" | "KEEP_SEPARATE";
+/**
+ * EXCLUDE is intentionally different from KEEP_SEPARATE:
+ *
+ * - KEEP_SEPARATE says the records are known to be distinct and therefore
+ *   still needs an editorial model that can safely retain both.
+ * - EXCLUDE says this release deliberately withholds every member of an
+ *   unresolved cluster. It makes a conservative, importable subset without
+ *   pretending that the records can be merged automatically.
+ */
+export type ReviewAction =
+  | "UNRESOLVED"
+  | "MERGE"
+  | "KEEP_SEPARATE"
+  | "EXCLUDE";
 export type DuplicateReviewDecision = {
   key: string;
   action: ReviewAction;
@@ -136,9 +149,10 @@ export async function initializeDuplicateReview(
 
 /**
  * Creates an importable release only when every detected duplicate has been
- * deliberately merged. KEEP_SEPARATE is recorded as a valid review decision,
- * but intentionally leaves the release blocked: the map importer will never
- * choose between two canonical place records on its own.
+ * deliberately merged or conservatively excluded. KEEP_SEPARATE is recorded
+ * as a valid review decision, but intentionally leaves the release blocked:
+ * the map importer will never choose between two canonical place records on
+ * its own.
  */
 export async function curateBundle(
   bundleDirectory: string,
@@ -175,11 +189,14 @@ export async function curateBundle(
     );
   const unresolved = duplicates.filter((cluster) => {
     const decision = decisions.get(cluster.key);
-    return !decision || decision.action !== "MERGE";
+    return (
+      !decision ||
+      (decision.action !== "MERGE" && decision.action !== "EXCLUDE")
+    );
   });
   if (unresolved.length) {
     throw new Error(
-      `${unresolved.length} duplicate cluster(s) still need a MERGE decision. KEEP_SEPARATE intentionally cannot be imported.`,
+      `${unresolved.length} duplicate cluster(s) still need a MERGE or EXCLUDE decision. KEEP_SEPARATE intentionally cannot be imported.`,
     );
   }
 
@@ -191,8 +208,23 @@ export async function curateBundle(
   );
   const mergedIds = new Set<string>();
   const replacements = new Map<string, PlaceCandidate>();
+  let excludedClusters = 0;
+  let excludedRecords = 0;
   for (const cluster of duplicates) {
     const decision = decisions.get(cluster.key)!;
+    const members = cluster.stableIds
+      .map((id) => byId.get(id))
+      .filter((candidate): candidate is PlaceCandidate => Boolean(candidate));
+    if (members.length !== cluster.stableIds.length)
+      throw new Error(
+        `Cluster ${cluster.key} references a missing catalogue record.`,
+      );
+    if (decision.action === "EXCLUDE") {
+      members.forEach((candidate) => mergedIds.add(candidate.stableId));
+      excludedClusters += 1;
+      excludedRecords += members.length;
+      continue;
+    }
     if (
       !decision.canonicalStableId ||
       !cluster.stableIds.includes(decision.canonicalStableId)
@@ -201,13 +233,6 @@ export async function curateBundle(
         `Cluster ${cluster.key} needs canonicalStableId set to one of its records.`,
       );
     }
-    const members = cluster.stableIds
-      .map((id) => byId.get(id))
-      .filter((candidate): candidate is PlaceCandidate => Boolean(candidate));
-    if (members.length !== cluster.stableIds.length)
-      throw new Error(
-        `Cluster ${cluster.key} references a missing catalogue record.`,
-      );
     replacements.set(
       decision.canonicalStableId,
       mergeCluster(members, decision.canonicalStableId),
@@ -249,10 +274,14 @@ export async function curateBundle(
   outputManifest.curatedFrom = {
     manifestSha256: digest(manifestText),
     reviewSha256: digest(await readFile(inputPath(reviewPath))),
-    mergedClusters: duplicates.length,
+    mergedClusters: duplicates.length - excludedClusters,
+    excludedClusters,
+    excludedRecords,
   };
   outputManifest.note =
-    "Reviewed duplicate clusters were explicitly merged; this bundle is safe for the Map importer.";
+    excludedClusters
+      ? "Duplicate clusters were either explicitly merged or conservatively excluded; this bundle is safe for the Map importer."
+      : "Reviewed duplicate clusters were explicitly merged; this bundle is safe for the Map importer.";
   await writeFile(
     join(output, "manifest.json"),
     JSON.stringify(outputManifest, null, 2) + "\n",

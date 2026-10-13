@@ -26,6 +26,7 @@ if (!command || command === "help" || command === "--help") {
   geo process [--config config/sources.json] [--out data/work/<release>]
   geo review:init <first-pass-bundle> [--out data/work/review-decisions.json]
   geo curate <first-pass-bundle> --decisions <review-decisions.json> --out data/work/<reviewed-release>
+  geo curate:exclude-duplicates <first-pass-bundle> --out data/work/<reviewed-release>
   geo publish --bundle <reviewed-bundle> --bucket <artifact-bucket> [--prefix tempvs/geography] [--apply]
   geo release:verify <reviewed-bundle>
   geo release:fetch <artifact-id> --bucket <artifact-bucket> --out <new-directory> [--prefix tempvs/geography]
@@ -85,6 +86,32 @@ if (command === "curate") {
   const out = option("--out", "data/work/reviewed-release");
   const result = await curateBundle(path, decisions, out);
   console.log(`Wrote reviewed release with ${result.catalogue.length} canonical places to ${out}.`);
+  process.exit(0);
+}
+
+if (command === "curate:exclude-duplicates") {
+  if (!path) throw new Error("A first-pass bundle directory is required.");
+  const out = option("--out", "data/work/reviewed-release");
+  const reviewPath = option("--decisions", "");
+  // Keep the generated decision file beside the output by default so this
+  // conservative editorial choice stays reproducible and inspectable.
+  const generatedReview = reviewPath || `${out}-excluded-duplicates.json`;
+  const review = await initializeDuplicateReview(path, generatedReview);
+  review.decisions = review.decisions.map((decision) => ({
+    ...decision,
+    action: "EXCLUDE",
+    note: "Conservatively excluded from this release: duplicate cluster not merged automatically.",
+  }));
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(
+    generatedReview,
+    `${JSON.stringify(review, null, 2)}\n`,
+    "utf8",
+  );
+  const result = await curateBundle(path, generatedReview, out);
+  console.log(
+    `Wrote conservative release with ${result.catalogue.length} canonical places; every duplicate-cluster member was excluded.`,
+  );
   process.exit(0);
 }
 

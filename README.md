@@ -105,6 +105,15 @@ npm run geo -- curate data/work/first-pass --decisions data/work/first-pass-revi
 npm run geo -- validate data/work/reviewed-v1/catalogue.jsonl
 ```
 
+If duplicate-review clusters are intentionally deferred, make a conservative
+release without inventing a merge. This excludes **every** member of each
+duplicate cluster and writes an inspectable decision file beside the output; it
+does not claim that either record is incorrect.
+
+```powershell
+npm.cmd run geo -- curate:exclude-duplicates data/work/first-pass --out data/work/reviewed-without-duplicates
+```
+
 ### Promote a reviewed immutable release
 
 Publishing is deliberately an administrator-operated step, not a normal CI
@@ -161,6 +170,8 @@ developer roles write access merely to seed the catalogue.
 `KEEP_SEPARATE` is deliberately not importable. It documents that the reviewer
 does not want to merge a cluster, but it keeps the bundle blocked until the
 records are re-modelled or excluded in a future, separately reviewed release.
+`EXCLUDE` is the conservative alternative: it removes all cluster members from
+one release while retaining the decision file for a later curated pass.
 The curated manifest stores hashes of both the original bundle and review file;
 changing the source bundle requires a fresh review file.
 

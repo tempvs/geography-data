@@ -157,7 +157,7 @@ test("requires explicit review then preserves merged provenance in an importable
   await initializeDuplicateReview(firstPass, reviewPath);
   await assert.rejects(
     () => curateBundle(firstPass, reviewPath, curated),
-    /still need a MERGE decision/,
+    /still need a MERGE or EXCLUDE decision/,
   );
   const review = JSON.parse(await readFile(reviewPath, "utf8"));
   review.decisions[0].action = "MERGE";
@@ -175,6 +175,34 @@ test("requires explicit review then preserves merged provenance in an importable
   );
   assert.equal(manifest.summary.duplicateClusters, 0);
   assert.equal(manifest.curatedFrom.mergedClusters, 1);
+});
+
+test("can conservatively exclude every member of an unresolved duplicate cluster", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tempvs-geography-curation-exclude-"));
+  const firstPass = join(root, "first-pass");
+  const reviewPath = join(root, "review.json");
+  const curated = join(root, "curated");
+  await writeBundle(await processSources("config/test-sources.json"), firstPass);
+  const review = await initializeDuplicateReview(firstPass, reviewPath);
+  review.decisions = review.decisions.map((decision) => ({
+    ...decision,
+    action: "EXCLUDE",
+  }));
+  await writeFile(reviewPath, JSON.stringify(review));
+  const result = await curateBundle(firstPass, reviewPath, curated);
+  assert.equal(result.catalogue.length, 3);
+  assert.ok(
+    !result.catalogue.some((candidate) =>
+      ["pleiades-fixture:423025", "geonames-fixture:3169070"].includes(
+        candidate.stableId,
+      ),
+    ),
+  );
+  const manifest = JSON.parse(
+    await readFile(join(curated, "manifest.json"), "utf8"),
+  );
+  assert.equal(manifest.curatedFrom.excludedClusters, 1);
+  assert.equal(manifest.curatedFrom.excludedRecords, 2);
 });
 
 test("writes a checksummed, inspectable bundle", async () => {
