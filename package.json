@@ -19,6 +19,6 @@
     "adm-zip": "^0.6.1",
     "csv-parse": "^7.0.3",
     "stream-json": "^3.7.0",
-    "typescript": "^5.8.2"
+    "typescript": "7.0.2"
   }
 }
