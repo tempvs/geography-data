@@ -264,3 +264,7 @@ deterministic gzip component chunks (`places`, `names`, `parents`,
 `period-relevance`, `provenance`) with a v2 content-addressed artifact ID.
 The default uncompressed chunk target is 20 MiB; adjust `--chunk-bytes` for a
 larger catalogue after measuring the resulting compressed size.
+
+
+Node tooling uses Node 26.13.1 and npm 11.20.0. Version-manager files and
+package engines select the same toolchain as CI.

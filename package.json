@@ -15,10 +15,15 @@
   "devDependencies": {
     "@aws-sdk/client-s3": "3.1169.0",
     "@types/adm-zip": "^0.5.7",
-    "@types/node": "^22.13.10",
+    "@types/node": "26.6.6",
     "adm-zip": "^0.6.1",
     "csv-parse": "^7.0.3",
     "stream-json": "^3.7.0",
     "typescript": "7.0.2"
-  }
+  },
+  "engines": {
+    "node": ">=26.13.1 <27",
+    "npm": ">=11.20.0 <12"
+  },
+  "packageManager": "npm@11.20.0"
 }
